@@ -1,7 +1,11 @@
 console.log("testing the arguments object");
 
 (function(foo) {
-  // console.log(arguments); // xfail: 'length' should not be enumerable
+  console.log(arguments);
+  console.log(arguments.length);
+  arguments.length = 0;
+  console.log(arguments.length);
+  delete arguments.length;
   console.log(arguments.length);
   console.log(Object.getPrototypeOf(arguments));
 })("bar");

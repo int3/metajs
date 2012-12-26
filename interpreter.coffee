@@ -115,7 +115,11 @@ class InterpretedFunction
     for arg, i in args
       calleeNode.env.insert calleeNode.params[i].name, arg
       argsObject[i] = arg
-    argsObject.length = args.length
+    Object.defineProperty argsObject, 'length',
+      value: args.length
+      writable: true
+      enumerable: false
+      configurable: true
     calleeNode.env.insert 'this', _this
     try
       interp calleeNode.body, calleeNode.env
