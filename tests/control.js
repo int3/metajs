@@ -23,6 +23,17 @@ for (var i = 0; i < 10; i++) {
 
 console.log(i);
 
+var obj = { a: 1, b: 2, c: 3 }
+function getObj() { console.log('returning obj'); return obj }
+for (var k = (function(){console.log('wat')})() in getObj()) {
+  console.log(k, obj[k]);
+}
+
+var obj2 = { i: 0 }
+for (obj2.i in obj) {
+  console.log(obj2.i, obj[obj2.i]);
+}
+
 var rv = (function () {
   console.log("foo");
   return;

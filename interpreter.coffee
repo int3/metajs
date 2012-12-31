@@ -10,16 +10,6 @@ Util =
 
   isString: (s) -> typeof s == 'string' || s instanceof String
 
-  evalMemberExpr: (node, env) ->
-    object = interp node.object, env
-    propNode = node.property
-    property =
-      if propNode.type is 'Identifier'
-        propNode.name
-      else
-        interp propNode, env
-    [object, property]
-
 unless Map? # polyfill
   class Map
     constructor: ->
@@ -43,6 +33,7 @@ unless Map? # polyfill
       else
         @proto_cache = value
         @proto_set = true
+      value
 
 class InterpreterException
 
@@ -85,7 +76,7 @@ class Environment
     for i in [@scopeChain.length - 1 .. 0] by -1
       if @scopeChain[i].has(name)
         return @scopeChain[i].set(name, value)
-    throw "Tried to updated nonexistent var '#{name}'"
+    throw "Tried to update nonexistent var '#{name}'"
 
   globalInsert: (name, value) ->
     @scopeChain[0].set(name, value)
@@ -156,7 +147,7 @@ interp = (node, env=new Environment) ->
         interp node.expression, env
       when 'CallExpression'
         if node.callee.type is 'MemberExpression'
-          [_this, calleeName] = Util.evalMemberExpr node.callee, env
+          [_this, calleeName] = evalMemberExpr node.callee, env
           callee = _this[calleeName]
         else
           _this = undefined
@@ -228,6 +219,15 @@ interp = (node, env=new Environment) ->
               continue
             else
               throw e
+      when 'ForInStatement'
+        interp node.left, env
+        obj = interp node.right, env
+        for k of obj
+          if node.left.type is 'VariableDeclaration'
+            assign node.left.declarations[0].id, k, env
+          else
+            assign node.left, k, env
+          interp node.body, env
       when 'BreakStatement'
         throw new BreakException
       when 'ContinueStatement'
@@ -298,23 +298,13 @@ interp = (node, env=new Environment) ->
             throw "Unrecognized operator #{node.operator}"
       when 'AssignmentExpression'
         value = interp node.right, env
-        if node.left.type is 'MemberExpression'
-          [object, property] = Util.evalMemberExpr node.left, env
-
         if node.operator is '='
-          if node.left.type is 'Identifier'
-            try
-              env.update node.left.name, value
-            catch e
-              env.globalInsert node.left.name, interp node.right, env
-          else if node.left.type is 'MemberExpression'
-            object[property] = value
-          else
-            throw "Invalid LHS in assignment"
+          assign node.left, value, env
         else
           if node.left.type is 'Identifier'
             original = env.resolve node.left.name
           else if node.left.type is 'MemberExpression'
+            [object, property] = evalMemberExpr node.left, env
             original = object[property]
           else
             throw "Invalid LHS in assignment"
@@ -346,13 +336,13 @@ interp = (node, env=new Environment) ->
         if node.argument.type is 'Identifier'
           env.insert node.argument.name, newValue
         else if node.argument.type is 'MemberExpression'
-          [object, property] = Util.evalMemberExpr node.argument, env
+          [object, property] = evalMemberExpr node.argument, env
           object[property] = newValue
         if node.prefix then newValue else original
       when 'UnaryExpression'
         if node.operator is 'delete'
           if node.argument.type is 'MemberExpression'
-            [object, property] = Util.evalMemberExpr node.argument, env
+            [object, property] = evalMemberExpr node.argument, env
             delete object[property]
           else
             throw "NYI"
@@ -373,7 +363,7 @@ interp = (node, env=new Environment) ->
       when 'Identifier'
         env.resolve node.name
       when 'MemberExpression'
-        [object, property] = Util.evalMemberExpr node, env
+        [object, property] = evalMemberExpr node, env
         object[property]
       when 'ThisExpression'
         env.resolve 'this'
@@ -396,6 +386,28 @@ interp = (node, env=new Environment) ->
     unless e instanceof InterpreterException
       console.log "Line #{node.loc.start.line}: Error in #{node.type}"
     throw e
+
+evalMemberExpr = (node, env) ->
+  object = interp node.object, env
+  propNode = node.property
+  property =
+    if propNode.type is 'Identifier' and not node.computed
+      propNode.name
+    else
+      interp propNode, env
+  [object, property]
+
+assign = (node, value, env) ->
+  if node.type is 'Identifier'
+    try
+      env.update node.name, value
+    catch e
+      env.globalInsert node.name, value
+  else if node.type is 'MemberExpression'
+    [object, property] = evalMemberExpr node, env
+    object[property] = value
+  else
+    throw "Invalid LHS in assignment"
 
 if require.main is module
   {argv} = require 'optimist'
