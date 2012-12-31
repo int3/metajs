@@ -3,12 +3,17 @@
 fs = require 'fs'
 esprima = require 'esprima'
 
-`if (typeof global === "undefined" || global === null) global = window;`
-
 Util =
   last: (arr) -> arr[arr.length - 1]
 
   isString: (s) -> typeof s == 'string' || s instanceof String
+
+  defineNonEnumerable: (obj, k, v) ->
+    Object.defineProperty obj, k,
+      value: v
+      writable: true
+      enumerable: false
+      configurable: true
 
 unless Map? # polyfill
   class Map
@@ -34,6 +39,20 @@ unless Map? # polyfill
         @proto_cache = value
         @proto_set = true
       value
+
+interpreterGlobal = do ->
+  interpreterGlobal = {}
+  if global?
+    nativeGlobal = global
+    globalName = 'global'
+  else
+    nativeGlobal = window
+    globalName = 'window'
+  interpreterGlobal[k] = v for k, v of nativeGlobal
+  nonEnumerable = ['Object', 'String', 'Function', 'RegExp', 'Number', 'Boolean',
+    'Date', 'Math', 'Error', 'JSON', 'eval', 'toString', 'undefined']
+  Util.defineNonEnumerable interpreterGlobal, k, nativeGlobal[k] for k in nonEnumerable
+  Util.defineNonEnumerable interpreterGlobal, 'global', interpreterGlobal
 
 class InterpreterException
 
@@ -67,9 +86,9 @@ class Environment
   insert: (name, value) ->
     if name is 'this' and not @strict
       if not value?
-        value = global
+        value = interpreterGlobal
       else if (t = typeof value) not in ['object', 'function']
-        value = new global[t.charAt(0).toUpperCase() + t[1..]] value
+        value = new interpreterGlobal[t.charAt(0).toUpperCase() + t[1..]] value
     @scopeChain[@currentScope].set(name, value)
 
   update: (name, value) ->
@@ -84,12 +103,12 @@ class Environment
   has: (name) ->
     for i in [@scopeChain.length - 1 .. 0] by -1
       return true if @scopeChain[i].has(name)
-    global[name]?
+    name of interpreterGlobal
 
   resolve: (name) ->
     for i in [@scopeChain.length - 1 .. 0] by -1
       return @scopeChain[i].get(name) if @scopeChain[i].has(name)
-    return global[name] if name of global
+    return interpreterGlobal[name] if name of interpreterGlobal
     throw "Unable to resolve #{JSON.stringify name}"
 
   toString: -> scope.cache for scope in @scopeChain
@@ -106,11 +125,7 @@ class InterpretedFunction
     for arg, i in args
       calleeNode.env.insert calleeNode.params[i].name, arg
       argsObject[i] = arg
-    Object.defineProperty argsObject, 'length',
-      value: args.length
-      writable: true
-      enumerable: false
-      configurable: true
+    Util.defineNonEnumerable argsObject, 'length', args.length
     calleeNode.env.insert 'this', _this
     try
       interp calleeNode.body, calleeNode.env

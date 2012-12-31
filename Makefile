@@ -1,6 +1,7 @@
 TESTS = $(wildcard tests/*.js)
 
 %.actual: %.js interpreter.coffee
+	@echo "testing $<... \c"
 	@coffee interpreter.coffee $< > $@
 
 %.expected: %.js
@@ -8,6 +9,6 @@ TESTS = $(wildcard tests/*.js)
 
 %.result: %.actual %.expected
 	@diff $?
-	@echo "$? passed"
+	@echo "passed"
 
 test: $(TESTS:.js=.result)

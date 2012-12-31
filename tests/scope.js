@@ -1,3 +1,5 @@
+console.log("testing lexical scope");
+
 function f(a) {
   var b = 2;
   globalVar = "glob";
@@ -26,6 +28,8 @@ Foo.prototype.bar = function() {
   console.log(this === global);
   console.log(this === undefined);
 }
+
+console.log("testing `this` binding");
 
 var foo = new Foo();
 foo.bar();
