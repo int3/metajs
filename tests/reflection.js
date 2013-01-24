@@ -34,6 +34,8 @@ a = -10;
 })();
 console.log(a);
 
+console.log((function() { 1; })());
+
 console.log("check that we have santized '__proto__'");
 var __proto__ = null;
 console.log(__proto__);

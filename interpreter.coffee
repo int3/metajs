@@ -146,7 +146,7 @@ interp = (node, env=new Environment) ->
         for stmt, i in node.body
           env.strict ||= i == 0 and stmt.expression?.value is 'use strict'
           v = interp(stmt, env)
-          return v if i == node.body.length - 1 # for eval's return value
+          return v if node.type is 'Program' and i == node.body.length - 1 # for eval's return value
       when 'FunctionDeclaration', 'FunctionExpression'
         node.env = env.copy()
         fn = (new Function "return function #{node.id?.name ? ''}() {}")()
