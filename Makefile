@@ -2,7 +2,8 @@ TESTS = $(wildcard tests/*.js)
 
 %.actual: %.js interpreter.coffee
 	@echo "testing $<... \c"
-	@coffee interpreter.coffee $< > $@
+	@iced interpreter.coffee $< > $@
+#	@node interpreter.js $< > $@
 
 %.expected: %.js
 	@node $? > $@
