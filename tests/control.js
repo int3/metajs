@@ -1,4 +1,4 @@
-if (true) {
+/*if (true) {
   console.log("True");
 }
 else {
@@ -73,3 +73,5 @@ console.log("testing exceptions");
   console.log(catchVar);
   console.log(finVar);
 })();
+
+*/
