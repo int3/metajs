@@ -321,11 +321,9 @@ interp = (node, env=new Environment, cont) ->
           if node.finalizer # try->catch->finally
             await interp node.finalizer, env, defer(errorInFinalizer, result)
             return cont(errorInFinalizer || errorInCatch)
-          # TODO: test throw from finalizer .. how does it work?
           else # try->catch
             return cont(eInCatch);
         else if node.finalizer
-          # TODO: test return from finalizer
           await interp node.finalizer, env, defer(errorInFinalizer, result)
           return cont(errorInFinalizer || errorInTry) # try->finally
         else
