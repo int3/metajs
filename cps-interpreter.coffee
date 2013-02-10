@@ -103,7 +103,7 @@ interp = (node, env=new Environment, cont) ->
             await callee.applyCps _this, args, defer(e, applied)
             return cont(e) if e?
             return cont(null, applied)
-          else 
+          else
             applied = callee.apply _this, args
             return cont(null, applied)
       when 'NewExpression'
@@ -171,7 +171,7 @@ interp = (node, env=new Environment, cont) ->
           return cont(e) if e?
           return cont() if not test
           # Body
-          await interp node.body, env, defer(e) 
+          await interp node.body, env, defer(e)
           return cont() if e instanceof BreakException
           return cont(e) if e? and not (e instanceof ContinueException)
           # Update
@@ -204,7 +204,7 @@ interp = (node, env=new Environment, cont) ->
       when 'ThrowStatement'
         await interp node.argument, env, defer(e, result)
         return cont(e || new JSException result)
-      when 'TryStatement'        
+      when 'TryStatement'
         await interp node.block, env, defer(errorInTry, result)
         if errorInTry instanceof JSException and node.handlers.length > 0
           catchEnv = env.increaseScope true
@@ -215,7 +215,7 @@ interp = (node, env=new Environment, cont) ->
             await interp node.finalizer, env, defer(errorInFinalizer, result)
             return cont(errorInFinalizer || errorInCatch)
           else # try->catch
-            return cont(eInCatch);
+            return cont(eInCatch)
         else if node.finalizer
           await interp node.finalizer, env, defer(errorInFinalizer, result)
           return cont(errorInFinalizer || errorInTry) # try->finally
@@ -321,9 +321,9 @@ interp = (node, env=new Environment, cont) ->
           return cont(e) if e?
           [object, property] = result
           object[property] = newValue
-        if node.prefix 
+        if node.prefix
           return cont(null, newValue)
-        else 
+        else
           return cont(null, original)
       when 'UnaryExpression'
         if node.operator is 'delete'
@@ -371,7 +371,7 @@ interp = (node, env=new Environment, cont) ->
         arr = []
         for el in node.elements
           await interp el, env, defer(e, elValue)
-          return cont(e) if e?          
+          return cont(e) if e?
           arr.push elValue
         return cont(null, arr)
       else
@@ -420,4 +420,3 @@ if require.main is module
   await interp parsed, new Environment, defer(e, result)
   throw e if e?
   result
-
