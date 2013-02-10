@@ -1,7 +1,7 @@
 metajs
 ======
 
-A simple metacircular AST interpreter for Javascript, written in Coffeescript.
+A simple metacircular AST interpreter for Javascript, written in IcedCoffeeScript.
 [Esprima][1] is used for the parser.
 
 Installation & Usage
