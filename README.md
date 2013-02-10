@@ -6,10 +6,20 @@ Coffeescript and IcedCoffeeScript.
 
 [Esprima][1] is used for the parser.
 
-Installation & Usage
---------------------
+Installation
+------------
 
     npm install esprima
+
+Usage
+-----
+
+To start the REPL:
+
+    ./interpreter.coffee
+
+To execute a file:
+
     ./interpreter.coffee [filename]
 
 Testing

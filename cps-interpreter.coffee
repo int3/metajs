@@ -409,14 +409,21 @@ assign = (node, value, env, cont) ->
   else
     return cont("Invalid LHS in assignment")
 
+toplevel = ->
+  repl = require 'repl'
+  env = new Environment
+  repl.start
+    eval: (cmd, ctx, filename, callback) ->
+      await interp (esprima.parse cmd[1..-2], loc: true), env, defer(e, result)
+      callback null, e ? result
+
 if require.main is module
   {argv} = require 'optimist'
   if argv._.length < 1
-    console.log "Usage: interp.coffee [filename]"
-    process.exit 1
-  parsed = esprima.parse (fs.readFileSync argv._[0]), loc: true
-
-  # interp parsed, new Environment
-  await interp parsed, new Environment, defer(e, result)
-  throw e if e?
-  result
+    toplevel()
+  else
+    parsed = esprima.parse (fs.readFileSync argv._[0]), loc: true
+    # interp parsed, new Environment
+    await interp parsed, new Environment, defer(e, result)
+    throw e if e?
+    result

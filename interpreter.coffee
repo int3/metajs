@@ -317,9 +317,21 @@ assign = (node, value, env) ->
   else
     throw "Invalid LHS in assignment"
 
+toplevel = ->
+  repl = require 'repl'
+  env = new Environment
+  repl.start
+    eval: (cmd, ctx, filename, callback) ->
+      # the REPL library adds parentheses around cmd. slice it out.
+      try
+        result = interp (esprima.parse cmd[1..-2], loc: true), env
+      catch e
+        result = e
+      callback null, result
+
 if require.main is module
   {argv} = require 'optimist'
   if argv._.length < 1
-    console.log "Usage: interp.coffee [filename]"
-    process.exit 1
-  interp esprima.parse (fs.readFileSync argv._[0]), loc: true
+    toplevel()
+  else
+    interp esprima.parse (fs.readFileSync argv._[0]), loc: true
