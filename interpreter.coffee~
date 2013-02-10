@@ -1,4 +1,4 @@
-#! /usr/bin/env iced
+#! /usr/bin/env coffee
 
 fs = require 'fs'
 esprima = require 'esprima'
