@@ -1,9 +1,9 @@
 TESTS = $(wildcard tests/*.js)
+INTERPRETER = interpreter.coffee
 
-%.actual: %.js interpreter.coffee
-	@echo "testing $<... \c"
-	@iced interpreter.coffee $< > $@
-#	@node interpreter.js $< > $@
+%.actual: %.js $(INTERPRETER)
+	@echo "testing $< with $(INTERPRETER)... \c"
+	@./$(INTERPRETER) $< > $@
 
 %.expected: %.js
 	@node $? > $@
@@ -13,3 +13,7 @@ TESTS = $(wildcard tests/*.js)
 	@echo "passed"
 
 test: $(TESTS:.js=.result)
+
+test-all:
+	@make test INTERPRETER=interpreter.coffee
+	@make test INTERPRETER=cps-interpreter.coffee
