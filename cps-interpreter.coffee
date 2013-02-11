@@ -11,11 +11,10 @@ class InterpretedFunction
     @prototype = @__ctor__.prototype
 
   apply: (_this, args) ->
-    await this.applyCps _this, args, defer(e, result)
-    throw e if e?
+    await this.applyCps _this, args, defer(result), errCont
     return result
 
-  applyCps: (appliedThis, args, cont) ->
+  applyCps: (appliedThis, args, cont, errCont) ->
     calleeNode = this.__call__
     calleeNode.env.increaseScope()
     argsObject = {}
@@ -25,64 +24,60 @@ class InterpretedFunction
       argsObject[i] = arg
     Util.defineNonEnumerable argsObject, 'length', args.length
     calleeNode.env.insert 'this', appliedThis
-    await interp calleeNode.body, calleeNode.env, defer(e, result)
+    await interp calleeNode.body, calleeNode.env, defer(result), (e) ->
+      if e instanceof ReturnException
+        calleeNode.env.decreaseScope()
+        cont(e.value)
+      else
+        errCont(e)
     calleeNode.env.decreaseScope()
-    return cont(null, e.value) if e instanceof ReturnException
-    return cont(e) if e?
-    return cont(null, result)
+    cont(result)
 
   call: (_this) -> @apply _this, Array::slice arguments, 1
 
-  callCps: (_this, cont) -> applyCps _this, (Array::slice arguments, 1), cont
+  callCps: (_this, cont, errCont) ->
+    applyCps _this, (Array::slice arguments, 1), cont, errCont
 
-interp = (node, env=new Environment, cont) ->
+interp = (node, env=new Environment, cont, errCont) ->
   try
     switch node.type
       when 'Program', 'BlockStatement'
         for stmt, i in node.body
           env.strict ||= i == 0 and stmt.expression?.value is 'use strict'
-          await interp(stmt, env, defer(e, v))
-          return cont(e) if e?
-          return cont(null, v) if node.type is 'Program' and i == node.body.length - 1 # for eval's return value
-        return cont()
+          await interp stmt, env, defer(v), errCont
+          return cont(v) if node.type is 'Program' and i == node.body.length - 1 # for eval's return value
+        cont()
       when 'FunctionDeclaration', 'FunctionExpression'
         node.env = env.copy()
         fn = (new Function "return function #{node.id?.name ? ''}() {}")()
         ifn = new InterpretedFunction fn, node
         if node.id?
           env.insert(node.id.name, ifn)
-        return cont(null, ifn)
+        cont(ifn)
       when 'VariableDeclaration'
         for dec in node.declarations
-          await interp dec, env, defer(e, result)
-          return cont(e) if e?
-        return cont()
+          await interp dec, env, defer(result), errCont
+        cont()
       when 'VariableDeclarator'
-        await interp node.init, env, defer(e, result)
-        return cont(e) if e?
+        await interp node.init, env, defer(result), errCont
         declaratorResult = env.insert node.id.name, result, env
-        return cont(null, declaratorResult)
+        cont(declaratorResult)
       when 'ExpressionStatement'
-        await interp node.expression, env, defer(e, result)
-        return cont(e, result)
+        interp node.expression, env, cont, errCont
       when 'CallExpression'
         callee = null
         if node.callee.type is 'MemberExpression'
-          await evalMemberExpr node.callee, env, defer(e, result)
-          return cont(e) if e?
-          [_this, calleeName] = result
+          await evalMemberExpr node.callee, env, defer(_this, calleeName), errCont
           callee = _this[calleeName]
         else
           _this = undefined
-          await interp(node.callee, env, defer(e, callee))
-          return cont(e) if e?
+          await interp node.callee, env, defer(callee), errCont
         args = []
         for arg in node.arguments
-          await interp(arg, env, defer(e, argResult))
-          return cont(e) if e?
+          await interp arg, env, defer(argResult), errCont
           args.push(argResult)
         if callee == eval
-          return cont(null, args[0]) unless Util.isString args[0]
+          return cont(args[0]) unless Util.isString args[0]
           ast = esprima.parse args[0]
           fnName =
             if node.callee.type is 'MemberExpression' and
@@ -93,197 +88,163 @@ interp = (node, env=new Environment, cont) ->
             else
               null
           if fnName is 'eval'
-            await interp ast, env, defer(e, result)
-            return cont(e, result)
+            interp ast, env, cont, errCont
           else
-            await interp ast, env.getGlobalEnv(), defer(e, result)
-            return cont(e, result)
+            interp ast, env.getGlobalEnv(), cont, errCont
         else
           if callee instanceof InterpretedFunction
-            await callee.applyCps _this, args, defer(e, applied)
-            return cont(e) if e?
-            return cont(null, applied)
+            callee.applyCps _this, args, cont, errCont
           else
-            applied = callee.apply _this, args
-            return cont(null, applied)
+            cont callee.apply _this, args
       when 'NewExpression'
-        await interp node.callee, env, defer(e, callee)
-        return cont(e) if e?
-        args = []
-        for arg in node.arguments
-          await interp(arg, env, defer(e, result))
-          return cont(e) if e?
-          args.push(result)
+        await interp node.callee, env, defer(callee), errCont
+        args =
+          for arg in node.arguments
+            await interp arg, env, defer(result), errCont
+            result
         if callee.__ctor__?
           obj = new callee.__ctor__
           if callee instanceof InterpretedFunction
-            await callee.applyCps obj, args, defer(e, result)
-            return cont(e) if e?
+            await callee.applyCps obj, args, defer(result), errCont
           else
             callee.apply obj, args
         else
           if callee instanceof InterpretedFunction
-            await callee.bind.applyCps callee, ([null].concat args), defer(e, result)
-            return cont(e) if e?
+            await callee.bind.applyCps callee, ([null].concat args), defer(result), errCont
           else
             obj = new (callee.bind.apply callee, [null].concat args)
-        return cont(null, obj)
+        cont(obj)
       #*** Control Flow ***#
       when 'IfStatement'
-        await interp node.test, env, defer(e, test)
-        return cont(e) if e?
+        await interp node.test, env, defer(test), errCont
         if (test)
-          await interp node.consequent, env, defer(e, result)
-          return cont(e, result)
+          interp node.consequent, env, cont, errCont
         else if node.alternate?
-          await interp node.alternate, env, defer(e, result)
-          return cont(e, result)
+          interp node.alternate, env, cont, errCont
         else
-          return cont()
+          cont()
       when 'WhileStatement'
         while (true)
           # Test
-          await interp node.test env, defer(e, test)
-          return cont(e) if e?
+          await interp node.test env, defer(test), errCont
           return cont() if not test
           # Body
-          await interp node.body, env, defer(e)
-          return cont() if e instanceof BreakException
-          return cont(e) if e? and not (e instanceof ContinueException)
-        return cont()
+          await
+            interp node.body, env, bodyCont = defer(),
+              makeLoopCont(node.body, env, bodyCont, cont, errCont)
       when 'DoWhileStatement'
         while (true)
           # Body
-          await interp node.body, env, defer(e)
-          return cont() if e instanceof BreakException
-          return cont(e) if e? and not (e instanceof ContinueException)
+          await
+            interp node.body, env, bodyCont = defer(),
+              makeLoopCont(node.body, env, bodyCont, cont, errCont)
           # Test
-          await interp node.test, env, defer(e, test)
-          return cont(e) if e?
+          await interp node.test, env, defer(test), errCont
           return cont() if not test
-        return cont()
       when 'ForStatement'
-        await interp node.init, env, defer(e)
-        return cont(e) if e?
+        await interp node.init, env, defer(), errCont
         while (true)
           # Test
-          await interp node.test, env, defer(e, test)
-          return cont(e) if e?
+          await interp node.test, env, defer(test), errCont
           return cont() if not test
           # Body
-          await interp node.body, env, defer(e)
-          return cont() if e instanceof BreakException
-          return cont(e) if e? and not (e instanceof ContinueException)
+          await
+            interp node.body, env, bodyCont = defer(),
+              makeLoopCont(node.body, env, bodyCont, cont, errCont)
           # Update
-          await interp node.update, env, defer(e)
-          return cont() if e instanceof BreakException
-          return cont(e) if e? and not (e instanceof ContinueException)
+          await interp node.update, env, defer(), errCont
       when 'ForInStatement'
-        await interp node.left, env, defer(e)
-        return cont(e) if e?
-        await interp node.right, env, defer(e, obj)
-        return cont(e) if e?
+        await interp node.left, env, defer(), errCont
+        await interp node.right, env, defer(obj), errCont
         for k of obj
           if node.left.type is 'VariableDeclaration'
-            await assign node.left.declarations[0].id, k, env, defer(e, result)
-            return cont(e) if e?
+            await assign node.left.declarations[0].id, k, env, defer(), errCont
           else
-            await assign node.left, k, env, defer(e, result)
-            return cont(e) if e?
-          await interp node.body, env, defer(e)
-          return cont(e) if e?
-        return cont()
+            await assign node.left, k, env, defer(), errCont
+          await
+            interp node.body, env, bodyCont = defer(),
+              makeLoopCont(node.body, env, bodyCont, cont, errCont)
+        cont()
       when 'BreakStatement'
-        return cont(new BreakException)
+        errCont(new BreakException)
       when 'ContinueStatement'
-        return cont(new ContinueException)
+        errCont(new ContinueException)
       when 'ReturnStatement'
-        return cont(new ReturnException undefined) if node.argument is null
-        await interp node.argument, env, defer(e, result)
-        return cont(e || new ReturnException result)
-      when 'ThrowStatement'
-        await interp node.argument, env, defer(e, result)
-        return cont(e || new JSException result)
-      when 'TryStatement'
-        await interp node.block, env, defer(errorInTry, result)
-        if errorInTry instanceof JSException and node.handlers.length > 0
-          catchEnv = env.increaseScope true
-          catchEnv.set node.handlers[0].param.name, errorInTry.exception
-          await interp node.handlers[0], env, defer(errorInCatch, result)
-          env.decreaseScope() # unless errorInCatch?
-          if node.finalizer # try->catch->finally
-            await interp node.finalizer, env, defer(errorInFinalizer, result)
-            return cont(errorInFinalizer || errorInCatch)
-          else # try->catch
-            return cont(eInCatch)
-        else if node.finalizer
-          await interp node.finalizer, env, defer(errorInFinalizer, result)
-          return cont(errorInFinalizer || errorInTry) # try->finally
+        if node.argument is null
+          errCont new ReturnException undefined
         else
-          return cont(errorInTry) # try
+          await interp node.argument, env, defer(result), errCont
+          errCont new ReturnException result
+      when 'ThrowStatement'
+        await interp node.argument, env, defer(result), errCont
+        errCont new JSException result
+      when 'TryStatement'
+        interp node.block, env, cont, (e) ->
+          if e instanceof JSException and node.handlers.length > 0
+            catchEnv = env.increaseScope true
+            catchEnv.set node.handlers[0].param.name, e.exception
+            await interp node.handlers[0], env, defer(), errCont
+            env.decreaseScope()
+          if node.finalizer
+            interp node.finalizer, env, cont, errCont
+          else
+            cont()
       when 'CatchClause'
-        await interp node.body, env, defer(e, result)
-        return cont(e, result)
+        await interp node.body, env, cont, errCont
       #*** Operator Expressions ***#
       when 'BinaryExpression'
-        await interp node.left, env, defer(e, lhs)
-        return cont(e) if e?
-        await interp node.right, env, defer(e, rhs)
-        return cont(e) if e?
+        await interp node.left, env, defer(lhs), errCont
+        await interp node.right, env, defer(rhs), errCont
         switch node.operator
           when '+'
-            return cont(null, lhs + rhs)
+            cont(lhs + rhs)
           when '-'
-            return cont(null, lhs - rhs)
+            cont(lhs - rhs)
           when '*'
-            return cont(null, lhs * rhs)
+            cont(lhs * rhs)
           when '/'
-            return cont(null, lhs / rhs)
+            cont(lhs / rhs) # TODO handle divzero
           when '&'
-            return cont(null, lhs & rhs)
+            cont(lhs & rhs)
           when '|'
-            return cont(null, lhs | rhs)
+            cont(lhs | rhs)
           when '^'
-            return cont(null, lhs ^ rhs)
+            cont(lhs ^ rhs)
           when '>>'
-            return cont(null, lhs >> rhs)
+            cont(lhs >> rhs)
           when '<<'
-            return cont(null, lhs << rhs)
+            cont(lhs << rhs)
           when '>>>'
-            return cont(null, lhs >>> rhs)
+            cont(lhs >>> rhs)
           when '<'
-            return cont(null, lhs < rhs)
+            cont(lhs < rhs)
           when '>'
-            return cont(null, lhs > rhs)
+            cont(lhs > rhs)
           when '<='
-            return cont(null, lhs <= rhs)
+            cont(lhs <= rhs)
           when '>='
-            return cont(null, lhs >= rhs)
+            cont(lhs >= rhs)
           when '=='
-            return cont(null, `lhs == rhs`)
+            cont(`lhs == rhs`)
           when '==='
-            return cont(null, `lhs === rhs`)
+            cont(`lhs === rhs`)
           when '!='
-            return cont(null, `lhs != rhs`)
+            cont(`lhs != rhs`)
           when '!=='
-            return cont(null, `lhs !== rhs`)
+            cont(`lhs !== rhs`)
           when 'instanceof'
-            return cont(null, lhs instanceof rhs.__ctor__)
+            cont(lhs instanceof rhs.__ctor__)
           else
-            return cont("Unrecognized operator #{node.operator}")
+            errCont("Unrecognized operator #{node.operator}")
       when 'AssignmentExpression'
-        await interp node.right, env, defer(e, value)
-        return cont(e) if e?
+        await interp node.right, env, defer(value), errCont
         if node.operator is '='
-          await assign node.left, value, env, defer(e, result)
-          return cont(e, result)
+          assign node.left, value, env, cont, errCont
         else
           if node.left.type is 'Identifier'
             original = env.resolve node.left.name
           else if node.left.type is 'MemberExpression'
-            evalMemberExpr node.left, env, cont(e, result)
-            return cont(e) if e?
-            [object, property] = result
+            await evalMemberExpr node.left, env, defer(object, property), errCont
             original = object[property]
           else
             throw "Invalid LHS in assignment"
@@ -306,10 +267,9 @@ interp = (node, env=new Environment, cont) ->
             env.insert node.left.name, original
           else if node.left.type is 'MemberExpression'
             object[property] = original
-          return cont(null, original)
+          cont(original)
       when 'UpdateExpression'
-        await interp node.argument, env, defer(e, original)
-        return cont(e) if e?
+        await interp node.argument, env, defer(original), errCont
         if node.operator is '++'
           newValue = original + 1
         else # '--'
@@ -317,105 +277,97 @@ interp = (node, env=new Environment, cont) ->
         if node.argument.type is 'Identifier'
           env.insert node.argument.name, newValue
         else if node.argument.type is 'MemberExpression'
-          await evalMemberExpr node.argument, env, defer(e, result)
-          return cont(e) if e?
-          [object, property] = result
+          await evalMemberExpr node.argument, env, defer(object, property), errCont
           object[property] = newValue
-        if node.prefix
-          return cont(null, newValue)
-        else
-          return cont(null, original)
+        cont(if node.prefix then newValue else original)
       when 'UnaryExpression'
         if node.operator is 'delete'
           if node.argument.type is 'MemberExpression'
-            await evalMemberExpr node.argument, env, defer(e, result)
-            return cont(e) if e?
-            [object, property] = result
-            return cont(null, delete object[property])
+            await evalMemberExpr node.argument, env, defer(object, property), errCont
+            cont(delete object[property])
           else
-            throw "NYI"
+            errCont "NYI"
         else
-          await interp node.argument, env, defer(e, arg)
-          return cont(e) if e?
+          await interp node.argument, env, defer(arg), errCont
           switch node.operator
             when '-'
-              return cont(null, -arg)
+              cont(-arg)
             when '~'
-              return cont(null, ~arg)
+              cont(~arg)
             when '!'
-              return cont(null, !arg)
+              cont(!arg)
             when 'typeof'
-              return cont(null, typeof arg)
+              cont(typeof arg)
             else
-              return cont("NYI")
+              errCont("NYI")
       #*** Identifiers and Literals ***#
       when 'Identifier'
-        return cont(null, env.resolve node.name)
+        cont(env.resolve node.name)
       when 'MemberExpression'
-        await evalMemberExpr node, env, defer(e, result)
-        return cont(e) if e?
-        [object, property] = result
-        return cont(null, object[property])
+        await evalMemberExpr node, env, defer(object, property), errCont
+        cont(object[property])
       when 'ThisExpression'
-        return cont(null, env.resolve 'this')
+        cont(env.resolve 'this')
       when 'Literal'
-        return cont(null, node.value)
+        cont(node.value)
       when 'ObjectExpression'
         obj = {}
         for prop in node.properties
-          await interp prop.value, env, defer(e, propValue)
-          return cont(e) if e?
+          await interp prop.value, env, defer(propValue), errCont
           obj[prop.key.name ? prop.key.value] = propValue
-        return cont(null, obj)
+        cont(obj)
       when 'ArrayExpression'
-        arr = []
-        for el in node.elements
-          await interp el, env, defer(e, elValue)
-          return cont(e) if e?
-          arr.push elValue
-        return cont(null, arr)
+        cont(
+          for el in node.elements
+            await interp el, env, defer(elValue), errCont)
       else
         console.log "Unrecognized node!"
         console.log node
-        return cont('Unrecognized node!')
+        errCont('Unrecognized node!')
   catch e
     unless e instanceof InterpreterException
       console.log "Line #{node.loc.start.line}: Error in #{node.type}"
-    return cont(e)
+    errCont(e)
+  return
 
-evalMemberExpr = (node, env, cont) ->
-  await interp node.object, env, defer(e, object)
-  return cont(e) if e?
+evalMemberExpr = (node, env, cont, errCont) ->
+  await interp node.object, env, defer(object), errCont
   propNode = node.property
   if propNode.type is 'Identifier' and not node.computed
-    cont(null, [object, propNode.name])
+    cont(object, propNode.name)
   else
-    await interp propNode, env, defer(e, property)
-    return cont(e, [object, property])
+    await interp propNode, env, defer(property), errCont
+    cont(object, property)
 
-assign = (node, value, env, cont) ->
+assign = (node, value, env, cont, errCont) ->
   if node.type is 'Identifier'
     try
       env.update node.name, value
     catch e
       env.globalInsert node.name, value
-    return cont(null, value)
+    cont(value)
   else if node.type is 'MemberExpression'
-    await evalMemberExpr node, env, defer(e, result)
-    return cont(e) if e?
-    [object, property] = result
+    await evalMemberExpr node, env, defer(object, property), errCont
     object[property] = value
-    return cont(null, value)
+    cont(value)
   else
-    return cont("Invalid LHS in assignment")
+    errCont("Invalid LHS in assignment")
+
+makeLoopCont = (body, env, bodyCont, cont, errCont) ->
+  (e) ->
+    if e instanceof BreakException
+      cont()
+    else if e instanceof ContinueException
+      bodyCont()
+    else
+      errCont(e)
 
 toplevel = ->
   repl = require 'repl'
   env = new Environment
   repl.start
     eval: (cmd, ctx, filename, callback) ->
-      await interp (esprima.parse cmd[1..-2], loc: true), env, defer(e, result)
-      callback null, e ? result
+      await interp (esprima.parse cmd[1..-2], loc: true), env, callback, callback
 
 if require.main is module
   {argv} = require 'optimist'
@@ -424,6 +376,6 @@ if require.main is module
   else
     parsed = esprima.parse (fs.readFileSync argv._[0]), loc: true
     # interp parsed, new Environment
-    await interp parsed, new Environment, defer(e, result)
-    throw e if e?
-    result
+    interp parsed, new Environment, (->), (e) ->
+      console.log "Error: ", e
+      process.exit 1
