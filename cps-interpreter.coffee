@@ -10,8 +10,8 @@ class InterpretedFunction
   constructor: (@__ctor__, @__call__) ->
     @prototype = @__ctor__.prototype
 
-  apply: (_this, args) ->
-    await this.applyCps _this, args, defer(result), errCont
+  apply: (thisArg, args) ->
+    await this.applyCps thisArg, args, defer(result), errCont
     return result
 
   applyCps: (appliedThis, args, cont, errCont) ->
@@ -33,10 +33,10 @@ class InterpretedFunction
     calleeNode.env.decreaseScope()
     cont(result)
 
-  call: (_this) -> @apply _this, Array::slice arguments, 1
+  call: (thisArg) -> @apply thisArg, Array::slice arguments, 1
 
-  callCps: (_this, cont, errCont) ->
-    applyCps _this, (Array::slice arguments, 1), cont, errCont
+  callCps: (thisArg, cont, errCont) ->
+    applyCps thisArg, (Array::slice arguments, 1), cont, errCont
 
 interp = (node, env=new Environment, cont, errCont) ->
   try
@@ -67,10 +67,10 @@ interp = (node, env=new Environment, cont, errCont) ->
       when 'CallExpression'
         callee = null
         if node.callee.type is 'MemberExpression'
-          await evalMemberExpr node.callee, env, defer(_this, calleeName), errCont
-          callee = _this[calleeName]
+          await evalMemberExpr node.callee, env, defer(thisArg, calleeName), errCont
+          callee = thisArg[calleeName]
         else
-          _this = undefined
+          thisArg = undefined
           await interp node.callee, env, defer(callee), errCont
         args = []
         for arg in node.arguments
@@ -93,9 +93,9 @@ interp = (node, env=new Environment, cont, errCont) ->
             interp ast, env.getGlobalEnv(), cont, errCont
         else
           if callee instanceof InterpretedFunction
-            callee.applyCps _this, args, cont, errCont
+            callee.applyCps thisArg, args, cont, errCont
           else
-            cont callee.apply _this, args
+            cont callee.apply thisArg, args
       when 'NewExpression'
         await interp node.callee, env, defer(callee), errCont
         args =
