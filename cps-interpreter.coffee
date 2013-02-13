@@ -177,7 +177,7 @@ interp = (node, env=new Environment, cont, errCont) ->
           errCont new ReturnException result
       when 'ThrowStatement'
         await interp node.argument, env, defer(result), errCont
-        errCont new JSException result
+        errCont new JSException result, node
       when 'TryStatement'
         interp node.block, env, cont, (e) ->
           if e instanceof JSException and node.handlers.length > 0
@@ -244,7 +244,7 @@ interp = (node, env=new Environment, cont, errCont) ->
           when '!=='
             cont(`lhs !== rhs`)
           when 'instanceof'
-            cont(lhs instanceof rhs.__ctor__)
+            cont(lhs instanceof (rhs?.__ctor__ ? rhs))
           else
             errCont("Unrecognized operator #{node.operator}")
       when 'AssignmentExpression'
@@ -336,10 +336,9 @@ interp = (node, env=new Environment, cont, errCont) ->
         console.log node
         errCont('Unrecognized node!')
   catch e
-    unless e instanceof InterpreterException
-      console.log "Line #{node.loc.start.line}: Error in #{node.type}"
+    if e not instanceof InterpreterException
+      e = new JSException e, node
     errCont(e)
-  return
 
 evalMemberExpr = (node, env, cont, errCont) ->
   await interp node.object, env, defer(object), errCont
@@ -378,7 +377,10 @@ toplevel = ->
   env = new Environment
   repl.start
     eval: (cmd, ctx, filename, callback) ->
-      await interp (esprima.parse cmd[1..-2], loc: true), env, callback, callback
+      await interp (esprima.parse cmd[1..-2], loc: true), env, callback, (e) ->
+        if(e instanceof JSException)
+          console.log("Line #{e.node.loc.start.line}: Error in #{e.node.type}")
+        callback(e?.exception ? e)
 
 if require.main is module
   {argv} = require 'optimist'

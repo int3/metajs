@@ -26,7 +26,7 @@ class root.BreakException extends root.InterpreterException
 class root.ContinueException extends root.InterpreterException
 
 class root.JSException extends root.InterpreterException
-  constructor: (@exception) ->
+  constructor: (@exception, @node) ->
 
 class root.Environment
   constructor: (@scopeChain=[new Map], @currentScope=0, @strict=false) ->
