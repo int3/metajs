@@ -144,7 +144,7 @@ interp = (node, env=new Environment) ->
         throw new ReturnException undefined if node.argument is null
         throw new ReturnException interp node.argument, env
       when 'ThrowStatement'
-        throw new JSException (interp node.argument), node
+        throw new JSException (interp node.argument, env), node
       when 'TryStatement'
         try
           interp node.block, env
