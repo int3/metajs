@@ -35,9 +35,6 @@ class InterpretedFunction
 
   call: (thisArg) -> @apply thisArg, Array::slice arguments, 1
 
-  callCps: (thisArg, cont, errCont) ->
-    applyCps thisArg, (Array::slice arguments, 1), cont, errCont
-
 interp = (node, env=new Environment, cont, errCont) ->
   try
     switch node.type
@@ -46,7 +43,7 @@ interp = (node, env=new Environment, cont, errCont) ->
           env.strict ||= i == 0 and stmt.expression?.value is 'use strict'
           await interp stmt, env, defer(v), errCont
           return cont(v) if node.type is 'Program' and i == node.body.length - 1 # for eval's return value
-        cont()
+        setTimeout cont(), 0 # avoid stack overflow
       when 'FunctionDeclaration', 'FunctionExpression'
         node.env = env.copy()
         fn = (new Function "return function #{node.id?.name ? ''}() {}")()
@@ -203,7 +200,7 @@ interp = (node, env=new Environment, cont, errCont) ->
             if not lhs then await interp node.right, env, defer(rhs), errCont
             cont(lhs || rhs)
           else
-            throw "Unrecognized operator #{node.operator}"
+            errCont "Unrecognized operator #{node.operator}"
       when 'BinaryExpression'
         await interp node.left, env, defer(lhs), errCont
         await interp node.right, env, defer(rhs), errCont
@@ -215,7 +212,7 @@ interp = (node, env=new Environment, cont, errCont) ->
           when '*'
             cont(lhs * rhs)
           when '/'
-            cont(lhs / rhs) # TODO handle divzero
+            cont(lhs / rhs)
           when '&'
             cont(lhs & rhs)
           when '|'
@@ -259,7 +256,7 @@ interp = (node, env=new Environment, cont, errCont) ->
             await evalMemberExpr node.left, env, defer(object, property), errCont
             original = object[property]
           else
-            throw "Invalid LHS in assignment"
+            errCont "Invalid LHS in assignment"
           switch node.operator
             when '+='
               original += value
@@ -274,7 +271,7 @@ interp = (node, env=new Environment, cont, errCont) ->
             when '|='
               original |= value
             else
-              throw "Unrecognized compound assignment #{node.operator}"
+              errCont "Unrecognized compound assignment #{node.operator}"
           if node.left.type is 'Identifier'
             env.insert node.left.name, original
           else if node.left.type is 'MemberExpression'
@@ -333,13 +330,9 @@ interp = (node, env=new Environment, cont, errCont) ->
           for el in node.elements
             await interp el, env, defer(elValue), errCont)
       else
-        console.log "Unrecognized node!"
-        console.log node
-        errCont('Unrecognized node!')
+        errCont("Unrecognized node '#{node.name}'!")
   catch e
-    if e not instanceof InterpreterException
-      e = new JSException e, node
-    errCont(e)
+    errCont(new JSException e, node)
 
 evalMemberExpr = (node, env, cont, errCont) ->
   await interp node.object, env, defer(object), errCont
