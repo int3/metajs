@@ -196,6 +196,7 @@ interp = (node, env=new Environment, cont, errCont) ->
         await interp node.left, env, defer(lhs), errCont
         switch node.operator
           when '&&'
+            # `lhs && await ...` will not short-circuit due to a bug in IcedCoffeeScript
             if lhs then await interp node.right, env, defer(rhs), errCont
             cont(lhs && rhs)
           when '||'
