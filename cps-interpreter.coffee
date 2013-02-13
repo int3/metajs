@@ -192,6 +192,17 @@ interp = (node, env=new Environment, cont, errCont) ->
       when 'CatchClause'
         await interp node.body, env, cont, errCont
       #*** Operator Expressions ***#
+      when 'LogicalExpression'
+        await interp node.left, env, defer(lhs), errCont
+        switch node.operator
+          when '&&'
+            if lhs then await interp node.right, env, defer(rhs), errCont
+            cont(lhs && rhs)
+          when '||'
+            if not lhs then await interp node.right, env, defer(rhs), errCont
+            cont(lhs || rhs)
+          else
+            throw "Unrecognized operator #{node.operator}"
       when 'BinaryExpression'
         await interp node.left, env, defer(lhs), errCont
         await interp node.right, env, defer(rhs), errCont
