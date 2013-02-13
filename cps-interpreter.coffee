@@ -325,7 +325,7 @@ interp = (node, env=new Environment, cont, errCont) ->
         console.log node
         errCont('Unrecognized node!')
   catch e
-    if e not instanceof JSException && e not instanceof InterpreterException
+    if e not instanceof InterpreterException
       e = new JSException e, node
     errCont(e)
 

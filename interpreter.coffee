@@ -293,7 +293,7 @@ interp = (node, env=new Environment) ->
         console.log "Unrecognized node!"
         console.log node
   catch e
-    if e not instanceof JSException && e not instanceof InterpreterException
+    if e not instanceof InterpreterException
       e = new JSException e, node
     throw e
 
