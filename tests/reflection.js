@@ -41,3 +41,10 @@ var __proto__ = null;
 console.log(__proto__);
 console.log(toString);
 console.log(global.__proto__);
+
+console.log("invalid instanceof call");
+try {
+    1 instanceof null;
+} catch (e) {
+    console.log(e);
+}
