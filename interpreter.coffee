@@ -162,6 +162,14 @@ interp = (node, env=new Environment) ->
       when 'CatchClause'
         interp node.body, env
       #*** Operator Expressions ***#
+      when 'LogicalExpression'
+        switch node.operator
+          when '&&'
+            interp(node.left, env) && interp(node.right, env)
+          when '||'
+            interp(node.left, env) || interp(node.right, env)
+          else
+            throw "Unrecognized operator #{node.operator}"
       when 'BinaryExpression'
         switch node.operator
           when '+'
