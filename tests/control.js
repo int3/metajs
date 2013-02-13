@@ -23,9 +23,9 @@ for (var i = 0; i < 10; i++) {
 
 console.log(i);
 
-var obj = { a: 1, b: 2, c: 3 }
-function getObj() { console.log('returning obj'); return obj }
-for (var k = (function(){console.log('wat')})() in getObj()) {
+var obj = { a: 1, b: 2, c: 3 };
+
+for (var k in obj) {
   console.log(k, obj[k]);
 }
 

@@ -6,10 +6,12 @@ Coffeescript and IcedCoffeeScript.
 
 [Esprima][1] is used for the parser.
 
-Installation
-------------
+Setup
+-----
 
-    npm install esprima
+    npm install optimist
+    cd node_modules
+    git clone -b harmony https://github.com/ariya/esprima.git --depth 1
 
 Usage
 -----

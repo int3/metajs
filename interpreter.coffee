@@ -50,7 +50,8 @@ interp = (node, env=new Environment) ->
       when 'VariableDeclaration'
         interp dec, env for dec in node.declarations
       when 'VariableDeclarator'
-        env.insert node.id.name, interp node.init, env
+        init = if node.init? then interp node.init, env else undefined
+        env.insert node.id.name, init, env
       when 'ExpressionStatement'
         interp node.expression, env
       when 'CallExpression'

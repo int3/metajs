@@ -56,9 +56,11 @@ interp = (node, env=new Environment, cont, errCont) ->
           await interp dec, env, defer(result), errCont
         cont()
       when 'VariableDeclarator'
-        await interp node.init, env, defer(result), errCont
-        declaratorResult = env.insert node.id.name, result, env
-        cont(declaratorResult)
+        if node.init?
+          await interp node.init, env, defer(init), errCont
+        else
+          init = undefined
+        cont(env.insert node.id.name, init, env)
       when 'ExpressionStatement'
         interp node.expression, env, cont, errCont
       when 'CallExpression'
@@ -384,5 +386,5 @@ if require.main is module
     parsed = esprima.parse (fs.readFileSync argv._[0]), loc: true
     # interp parsed, new Environment
     interp parsed, new Environment, (->), (e) ->
-      console.log "Error: ", e
+      console.log "Error: ", e.exception ? e
       process.exit 1
