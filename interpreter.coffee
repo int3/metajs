@@ -144,7 +144,7 @@ interp = (node, env=new Environment) ->
         throw new ReturnException undefined if node.argument is null
         throw new ReturnException interp node.argument, env
       when 'ThrowStatement'
-        throw new JSException interp node.argument, env
+        throw new JSException (interp node.argument), node
       when 'TryStatement'
         try
           interp node.block, env
@@ -201,7 +201,9 @@ interp = (node, env=new Environment) ->
           when '!=='
             interp(node.left, env) != interp(node.right, env)
           when 'instanceof'
-            interp(node.left, env) instanceof interp(node.right, env).__ctor__
+            lhs = interp(node.left, env)
+            rhs = interp(node.right, env)
+            lhs instanceof rhs?.__ctor__ ? rhs
           else
             throw "Unrecognized operator #{node.operator}"
       when 'AssignmentExpression'
@@ -291,8 +293,8 @@ interp = (node, env=new Environment) ->
         console.log "Unrecognized node!"
         console.log node
   catch e
-    unless e instanceof InterpreterException
-      console.log "Line #{node.loc.start.line}: Error in #{node.type}"
+    if e not instanceof JSException && e not instanceof InterpreterException
+      e = new JSException e, node
     throw e
 
 evalMemberExpr = (node, env) ->
@@ -326,7 +328,9 @@ toplevel = ->
       try
         result = interp (esprima.parse cmd[1..-2], loc: true), env
       catch e
-        result = e
+        if(e instanceof JSException)
+          console.log("Line #{e.node.loc.start.line}: Error in #{e.node.type}")
+        result = e?.exception ? e
       callback null, result
 
 if require.main is module
