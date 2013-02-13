@@ -369,7 +369,7 @@ toplevel = ->
       await interp (esprima.parse cmd[1..-2], loc: true), env, callback, (e) ->
         if(e instanceof JSException)
           console.log("Line #{e.node.loc.start.line}: Error in #{e.node.type}")
-        e?.exception ? e
+        callback(e?.exception ? e)
 
 if require.main is module
   {argv} = require 'optimist'
