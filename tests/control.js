@@ -73,3 +73,34 @@ console.log("testing exceptions");
   console.log(catchVar);
   console.log(finVar);
 })();
+
+console.log("testing logical operators");
+
+var falseFn = function() {
+    console.log("falseFn");
+    return false;
+};
+
+var trueFn = function() {
+    console.log("trueFn");
+    return true;
+};
+
+console.log('&&');
+console.log(falseFn() && falseFn());
+console.log('&&');
+console.log(falseFn() && trueFn());
+console.log('&&');
+console.log(trueFn() && falseFn());
+console.log('&&');
+console.log(trueFn() && trueFn());
+
+console.log('||');
+console.log(falseFn() || falseFn());
+console.log('||');
+console.log(falseFn() || trueFn());
+console.log('||');
+console.log(trueFn() || falseFn());
+console.log('||');
+console.log(trueFn() || trueFn());
+
