@@ -5,6 +5,8 @@ else {
   console.log("False");
 }
 
+console.log(typeof foo === 'undefined' ? 'foo exists' : 'foo does not exist');
+
 for (var i = 0; i < 10; i++) {
   console.log(i);
 }

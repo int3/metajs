@@ -4,7 +4,7 @@ fs = require 'fs'
 esprima = require 'esprima'
 {Util} = require './util/util'
 {interpreterGlobal, InterpreterException, ReturnException, BreakException,
-  ContinueException, JSException, Environment} = require './util/interp-util'
+  ContinueException, Environment} = require './util/interp-util'
 
 class InterpretedFunction
   constructor: (@__ctor__, @__call__) ->
@@ -114,7 +114,7 @@ interp = (node, env=new Environment, cont, errCont) ->
             obj = new (callee.bind.apply callee, [null].concat args)
         cont(obj)
       #*** Control Flow ***#
-      when 'IfStatement'
+      when 'IfStatement', 'ConditionalExpression'
         await interp node.test, env, defer(test), errCont
         if (test)
           interp node.consequent, env, cont, errCont
@@ -176,12 +176,12 @@ interp = (node, env=new Environment, cont, errCont) ->
           errCont new ReturnException result
       when 'ThrowStatement'
         await interp node.argument, env, defer(result), errCont
-        errCont new JSException result, node
+        errCont result
       when 'TryStatement'
         interp node.block, env, cont, (e) ->
-          if e instanceof JSException and node.handlers.length > 0
+          if e not instanceof InterpreterException and node.handlers.length > 0
             catchEnv = env.increaseScope true
-            catchEnv.set node.handlers[0].param.name, e.exception
+            catchEnv.set node.handlers[0].param.name, e
             await interp node.handlers[0], env, defer(), errCont
             env.decreaseScope()
           if node.finalizer
@@ -298,6 +298,9 @@ interp = (node, env=new Environment, cont, errCont) ->
             cont(delete object[property])
           else
             errCont "NYI"
+        else if node.operator is 'typeof' and
+            node.argument.type is 'Identifier' and not env.has node.argument.name
+          cont('undefined')
         else
           await interp node.argument, env, defer(arg), errCont
           switch node.operator
@@ -332,9 +335,9 @@ interp = (node, env=new Environment, cont, errCont) ->
           for el in node.elements
             await interp el, env, defer(elValue), errCont)
       else
-        errCont("Unrecognized node '#{node.name}'!")
+        errCont("Unrecognized node '#{node.type}'!")
   catch e
-    errCont(new JSException e, node)
+    errCont e
 
 evalMemberExpr = (node, env, cont, errCont) ->
   await interp node.object, env, defer(object), errCont
@@ -374,9 +377,7 @@ toplevel = ->
   repl.start
     eval: (cmd, ctx, filename, callback) ->
       await interp (esprima.parse cmd[1..-2], loc: true), env, callback, (e) ->
-        if(e instanceof JSException)
-          console.log("Line #{e.node.loc.start.line}: Error in #{e.node.type}")
-        callback(e?.exception ? e)
+        callback(e)
 
 if require.main is module
   {argv} = require 'optimist'
@@ -386,5 +387,5 @@ if require.main is module
     parsed = esprima.parse (fs.readFileSync argv._[0]), loc: true
     # interp parsed, new Environment
     interp parsed, new Environment, (->), (e) ->
-      console.log "Error: ", e.exception ? e
+      console.log "Error: ", e
       process.exit 1

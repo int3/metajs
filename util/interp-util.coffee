@@ -25,9 +25,6 @@ class root.BreakException extends root.InterpreterException
 
 class root.ContinueException extends root.InterpreterException
 
-class root.JSException extends root.InterpreterException
-  constructor: (@exception, @node) ->
-
 class root.Environment
   constructor: (@scopeChain=[new Map], @currentScope=0, @strict=false) ->
 
@@ -57,7 +54,7 @@ class root.Environment
     for i in [@scopeChain.length - 1 .. 0] by -1
       if @scopeChain[i].has(name)
         return @scopeChain[i].set(name, value)
-    throw "Tried to update nonexistent var '#{name}'"
+    throw new ReferenceError "Tried to update nonexistent var '#{name}'"
 
   globalInsert: (name, value) ->
     @scopeChain[0].set(name, value)
@@ -71,6 +68,6 @@ class root.Environment
     for i in [@scopeChain.length - 1 .. 0] by -1
       return @scopeChain[i].get(name) if @scopeChain[i].has(name)
     return root.interpreterGlobal[name] if name of root.interpreterGlobal
-    throw "Unable to resolve #{JSON.stringify name}"
+    throw new ReferenceError "Unable to resolve #{JSON.stringify name}"
 
   toString: -> scope.cache for scope in @scopeChain
