@@ -16,6 +16,11 @@ console.log("testing the arguments object");
   console.log(Object.getPrototypeOf(arguments));
 })({});
 
+(function() {
+  console.log(arguments);
+  console.log(arguments.length);
+})("bar");
+
 console.log("testing eval()");
 
 a = -10;

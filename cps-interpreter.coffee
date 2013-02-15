@@ -6,34 +6,133 @@ esprima = require 'esprima'
 {interpreterGlobal, InterpreterException, ReturnException, BreakException,
   ContinueException, Environment} = require './util/interp-util'
 
-class InterpretedFunction
-  constructor: (@__ctor__, @__call__) ->
+class YieldException extends InterpreterException
+  constructor: (@cont, @errCont, @value) ->
+
+class StopIteration
+  toString: -> "StopIteration"
+
+Util.defineNonEnumerable interpreterGlobal, 'StopIteration', StopIteration
+
+makeArgsObject = (argsArray) ->
+  argsObject = {}
+  argsObject[i] = arg for arg, i in argsArray
+  Util.defineNonEnumerable argsObject, 'length', argsArray.length
+
+class CPSFunction
+  constructor: (@name, @__env__, __apply__) ->
+    @__apply__ ?= __apply__
+    @__ctor__ = (new Function "return function #{@name}() {}")()
     @prototype = @__ctor__.prototype
 
   apply: (thisArg, args) ->
-    await this.applyCps thisArg, args, defer(result), errCont
+    await this.__apply__ thisArg, args, defer(result), errCont
     return result
 
-  applyCps: (appliedThis, args, cont, errCont) ->
-    calleeNode = this.__call__
-    calleeNode.env.increaseScope()
-    argsObject = {}
-    calleeNode.env.insert "arguments", argsObject
-    for arg, i in args
-      calleeNode.env.insert calleeNode.params[i].name, arg
-      argsObject[i] = arg
-    Util.defineNonEnumerable argsObject, 'length', args.length
-    calleeNode.env.insert 'this', appliedThis
-    await interp calleeNode.body, calleeNode.env, defer(result), (e) ->
+class InterpretedFunction extends CPSFunction
+  constructor: (name, __env__, @__node__) ->
+    super(name, __env__)
+
+  __apply__: (thisArg, args, cont, errCont) ->
+    @__env__.increaseScope()
+    @__env__.insert 'arguments', makeArgsObject args
+    # must be called after makeArgsObject in case there is a param named
+    # 'arguments'
+    @__env__.insert(param.name, args[i]) for param, i in @__node__.params
+    @__env__.insert 'this', thisArg
+    await interp @__node__.body, @__env__, defer(result), (e) =>
       if e instanceof ReturnException
-        calleeNode.env.decreaseScope()
+        @__env__.decreaseScope()
         cont(e.value)
       else
         errCont(e)
-    calleeNode.env.decreaseScope()
+    @__env__.decreaseScope()
     cont(result)
 
-  call: (thisArg) -> @apply thisArg, Array::slice arguments, 1
+class GeneratorFunction extends InterpretedFunction
+  __apply__: (thisArg, args, cont, errCont) ->
+    cont new Generator thisArg, args, @__node__, @__env__.copy()
+
+class Generator
+  NEWBORN = {}
+  EXECUTING = {}
+  CLOSED = {}
+  SUSPENDED = {}
+
+  constructor: (thisArg, args, @__node__, @__env__) ->
+    @__cont__ = null
+    @__state__ = NEWBORN
+    @__env__.increaseScope()
+    @__env__.insert 'arguments', makeArgsObject args
+    @__env__.insert(param.name, args[i]) for param, i in @__node__.params
+    @__env__.insert 'this', thisArg
+
+  send: new CPSFunction('send', null, (thisArg, args, cont, errCont) ->
+    v = args[0]
+    thisArg.__calleeCont__ = cont
+    thisArg.__calleeErrCont__ = errCont
+    switch thisArg.__state__
+      when EXECUTING
+        errCont new Error "Generator is already executing"
+      when CLOSED
+        errCont new StopIteration
+      when NEWBORN
+        if v isnt undefined then throw new TypeError
+        thisArg.__state__ = EXECUTING
+        await interp thisArg.__node__.body, thisArg.__env__, bodyCont = defer(), (e) ->
+          if e instanceof YieldException
+            thisArg.__state__ = SUSPENDED
+            thisArg.__cont__ = e.cont
+            thisArg.__errCont__ = e.errCont
+            thisArg.__calleeCont__ e.value
+          else if e instanceof ReturnException
+            bodyCont()
+          else
+            thisArg.__calleeErrCont__ e
+        thisArg.__state__ = CLOSED
+        thisArg.__calleeErrCont__ new StopIteration
+      else # SUSPENDED
+        thisArg.__cont__ v)
+
+  next: new CPSFunction('next', null, (thisArg, args, cont, errCont) ->
+    thisArg.send.__apply__ thisArg, [], cont, errCont)
+
+  close: new CPSFunction('close', null, (thisArg, args, cont, errCont) ->
+    thisArg.__calleeCont__ = cont
+    thisArg.__calleeErrCont__ = errCont
+    thisArg.__calleeErrCont__ = do (originalCont = thisArg.__calleeErrCont__) ->
+      (e) ->
+        if e instanceof StopIteration
+          cont()
+        else
+          originalCont(e)
+    switch thisArg.__state__
+      when EXECUTING
+        errCont new Error "Generator is currently executing"
+      when NEWBORN
+        thisArg.__state__ = CLOSED
+      when SUSPENDED
+        thisArg.__state__ = EXECUTING
+        thisArg.__errCont__ new ReturnException
+      when CLOSED
+        cont())
+
+  throw: new CPSFunction('_throw', null, (thisArg, args, cont, errCont) ->
+    thisArg.__calleeCont__ = cont
+    thisArg.__calleeErrCont__ = errCont
+    switch thisArg.__state__
+      when EXECUTING
+        errCont new Error "Generator is currently executing"
+      when CLOSED
+        errCont new Error "Generator is closed"
+      when NEWBORN
+        thisArg.__state__ = CLOSED
+        thisArg.__calleeErrCont__ args[0]
+      when SUSPENDED
+        thisArg.__state__ = EXECUTING
+        thisArg.__errCont__ args[0])
+
+  iterate: -> @
 
 interp = (node, env=new Environment, cont, errCont) ->
   try
@@ -45,9 +144,8 @@ interp = (node, env=new Environment, cont, errCont) ->
           return cont(v) if node.type is 'Program' and i == node.body.length - 1 # for eval's return value
         setTimeout cont(), 0 # avoid stack overflow
       when 'FunctionDeclaration', 'FunctionExpression'
-        node.env = env.copy()
-        fn = (new Function "return function #{node.id?.name ? ''}() {}")()
-        ifn = new InterpretedFunction fn, node
+        name = node.id?.name ? ''
+        ifn = new (if node.generator then GeneratorFunction else InterpretedFunction) name, env.copy(), node
         if node.id?
           env.insert(node.id.name, ifn)
         cont(ifn)
@@ -71,10 +169,10 @@ interp = (node, env=new Environment, cont, errCont) ->
         else
           thisArg = undefined
           await interp node.callee, env, defer(callee), errCont
-        args = []
-        for arg in node.arguments
-          await interp arg, env, defer(argResult), errCont
-          args.push(argResult)
+        args =
+          for arg in node.arguments
+            await interp arg, env, defer(argResult), errCont
+            argResult
         if callee == eval
           return cont(args[0]) unless Util.isString args[0]
           ast = esprima.parse args[0]
@@ -91,8 +189,8 @@ interp = (node, env=new Environment, cont, errCont) ->
           else
             interp ast, env.getGlobalEnv(), cont, errCont
         else
-          if callee instanceof InterpretedFunction
-            callee.applyCps thisArg, args, cont, errCont
+          if callee instanceof CPSFunction
+            callee.__apply__ thisArg, args, cont, errCont
           else
             cont callee.apply thisArg, args
       when 'NewExpression'
@@ -103,13 +201,13 @@ interp = (node, env=new Environment, cont, errCont) ->
             result
         if callee.__ctor__?
           obj = new callee.__ctor__
-          if callee instanceof InterpretedFunction
-            await callee.applyCps obj, args, defer(result), errCont
+          if callee instanceof CPSFunction
+            await callee.__apply__ obj, args, defer(result), errCont
           else
             callee.apply obj, args
         else
-          if callee instanceof InterpretedFunction
-            await callee.bind.applyCps callee, ([null].concat args), defer(result), errCont
+          if callee instanceof CPSFunction
+            await callee.bind.__apply__ callee, ([null].concat args), defer(result), errCont
           else
             obj = new (callee.bind.apply callee, [null].concat args)
         cont(obj)
@@ -125,18 +223,16 @@ interp = (node, env=new Environment, cont, errCont) ->
       when 'WhileStatement'
         while (true)
           # Test
-          await interp node.test env, defer(test), errCont
+          await interp node.test, env, defer(test), errCont
           return cont() if not test
           # Body
-          await
-            interp node.body, env, bodyCont = defer(),
-              makeLoopCont(node.body, env, bodyCont, cont, errCont)
+          await interp node.body, env, bodyCont = defer(),
+            makeLoopCont(node.body, env, bodyCont, cont, errCont)
       when 'DoWhileStatement'
         while (true)
           # Body
-          await
-            interp node.body, env, bodyCont = defer(),
-              makeLoopCont(node.body, env, bodyCont, cont, errCont)
+          await interp node.body, env, bodyCont = defer(),
+            makeLoopCont(node.body, env, bodyCont, cont, errCont)
           # Test
           await interp node.test, env, defer(test), errCont
           return cont() if not test
@@ -147,9 +243,8 @@ interp = (node, env=new Environment, cont, errCont) ->
           await interp node.test, env, defer(test), errCont
           return cont() if not test
           # Body
-          await
-            interp node.body, env, bodyCont = defer(),
-              makeLoopCont(node.body, env, bodyCont, cont, errCont)
+          await interp node.body, env, bodyCont = defer(),
+            makeLoopCont(node.body, env, bodyCont, cont, errCont)
           # Update
           await interp node.update, env, defer(), errCont
       when 'ForInStatement'
@@ -160,9 +255,8 @@ interp = (node, env=new Environment, cont, errCont) ->
             await assign node.left.declarations[0].id, k, env, defer(), errCont
           else
             await assign node.left, k, env, defer(), errCont
-          await
-            interp node.body, env, bodyCont = defer(),
-              makeLoopCont(node.body, env, bodyCont, cont, errCont)
+          await interp node.body, env, bodyCont = defer(),
+            makeLoopCont(node.body, env, bodyCont, cont, errCont)
         cont()
       when 'BreakStatement'
         errCont(new BreakException)
@@ -177,19 +271,31 @@ interp = (node, env=new Environment, cont, errCont) ->
       when 'ThrowStatement'
         await interp node.argument, env, defer(result), errCont
         errCont result
+      # may be called more than once if try statement contains a yield
       when 'TryStatement'
-        interp node.block, env, cont, (e) ->
-          if e not instanceof InterpreterException and node.handlers.length > 0
+        finalizeAndThrow = (e) ->
+          if node.finalizer
+            await interp node.finalizer, env, defer(), errCont
+          errCont e
+        finalizeAndCont = ->
+          if node.finalizer then interp node.finalizer, env, cont, errCont else cont()
+
+        await interp node.block, env, defer(), (e) ->
+          if e instanceof YieldException
+            errCont e
+          else if e not instanceof InterpreterException and node.handlers.length > 0
             catchEnv = env.increaseScope true
             catchEnv.set node.handlers[0].param.name, e
-            await interp node.handlers[0], env, defer(), errCont
+            await interp node.handlers[0], env, defer(), (e) ->
+              env.decreaseScope()
+              finalizeAndThrow(e)
             env.decreaseScope()
-          if node.finalizer
-            interp node.finalizer, env, cont, errCont
+            finalizeAndCont()
           else
-            cont()
+            finalizeAndThrow(e)
+        finalizeAndCont()
       when 'CatchClause'
-        await interp node.body, env, cont, errCont
+        interp node.body, env, cont, errCont
       #*** Operator Expressions ***#
       when 'LogicalExpression'
         await interp node.left, env, defer(lhs), errCont
@@ -334,6 +440,9 @@ interp = (node, env=new Environment, cont, errCont) ->
         cont(
           for el in node.elements
             await interp el, env, defer(elValue), errCont)
+      when 'YieldExpression'
+        if node.argument? then await interp node.argument, env, defer(yieldValue), errCont
+        errCont(new YieldException cont, errCont, yieldValue)
       else
         errCont("Unrecognized node '#{node.type}'!")
   catch e
@@ -377,7 +486,7 @@ toplevel = ->
   repl.start
     eval: (cmd, ctx, filename, callback) ->
       await interp (esprima.parse cmd[1..-2], loc: true), env, callback, (e) ->
-        callback(e)
+        callback("Error: #{e}")
 
 if require.main is module
   {argv} = require 'optimist'
@@ -387,5 +496,5 @@ if require.main is module
     parsed = esprima.parse (fs.readFileSync argv._[0]), loc: true
     # interp parsed, new Environment
     interp parsed, new Environment, (->), (e) ->
-      console.log "Error: ", e
+      console.log "Error: #{e}"
       process.exit 1

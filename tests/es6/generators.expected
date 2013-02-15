@@ -1,0 +1,20 @@
+Generator 1
+Iterator received hi
+1
+Iterator received hi
+2
+Iterator received hi
+3
+Iterator received hi
+4
+Iterator received hi
+Shutting down iterator
+iterator exhausted
+Generator 2
+Shutting down iterator
+undefined
+iterator exhausted
+Generator 3
+Iterator caught [Error: injected error]
+Shutting down iterator
+iterator exhausted

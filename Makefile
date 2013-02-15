@@ -1,4 +1,5 @@
 TESTS = $(wildcard tests/*.js)
+ES6TESTS = $(wildcard tests/es6/*.js)
 INTERPRETER = interpreter.coffee
 
 %.actual: %.js $(INTERPRETER)
@@ -14,6 +15,9 @@ INTERPRETER = interpreter.coffee
 
 test: $(TESTS:.js=.result)
 
+test-es6: $(ES6TESTS:.js=.result)
+
 test-all:
 	@make test INTERPRETER=interpreter.coffee
 	@make test INTERPRETER=cps-interpreter.coffee
+	@make test-es6 INTERPRETER=cps-interpreter.coffee
