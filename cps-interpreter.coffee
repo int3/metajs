@@ -10,6 +10,7 @@ class YieldException extends InterpreterException
   constructor: (@cont, @errCont, @value) ->
 
 class StopIteration
+  constructor: (@value) ->
   toString: -> "StopIteration"
 
 Util.defineNonEnumerable interpreterGlobal, 'StopIteration', StopIteration
@@ -79,18 +80,18 @@ class Generator
       when NEWBORN
         if v isnt undefined then throw new TypeError
         thisArg.__state__ = EXECUTING
-        await interp thisArg.__node__.body, thisArg.__env__, bodyCont = defer(), (e) ->
+        await interp thisArg.__node__.body, thisArg.__env__, bodyCont = defer(rv), (e) ->
           if e instanceof YieldException
             thisArg.__state__ = SUSPENDED
             thisArg.__cont__ = e.cont
             thisArg.__errCont__ = e.errCont
             thisArg.__calleeCont__ e.value
           else if e instanceof ReturnException
-            bodyCont()
+            bodyCont(e.value)
           else
             thisArg.__calleeErrCont__ e
         thisArg.__state__ = CLOSED
-        thisArg.__calleeErrCont__ new StopIteration
+        thisArg.__calleeErrCont__ new StopIteration rv
       else # SUSPENDED
         thisArg.__cont__ v)
 
@@ -99,13 +100,11 @@ class Generator
 
   close: new CPSFunction('close', null, (thisArg, args, cont, errCont) ->
     thisArg.__calleeCont__ = cont
-    thisArg.__calleeErrCont__ = errCont
-    thisArg.__calleeErrCont__ = do (originalCont = thisArg.__calleeErrCont__) ->
-      (e) ->
-        if e instanceof StopIteration
-          cont()
-        else
-          originalCont(e)
+    thisArg.__calleeErrCont__ = (e) ->
+      if e instanceof StopIteration
+        cont()
+      else
+        errCont(e)
     switch thisArg.__state__
       when EXECUTING
         errCont new Error "Generator is currently executing"
@@ -441,8 +440,26 @@ interp = (node, env=new Environment, cont, errCont) ->
           for el in node.elements
             await interp el, env, defer(elValue), errCont)
       when 'YieldExpression'
-        if node.argument? then await interp node.argument, env, defer(yieldValue), errCont
-        errCont(new YieldException cont, errCont, yieldValue)
+        if node.delegate # yield*
+          await interp node.argument, env, defer(gen), errCont
+          await gen.send.__apply__ gen, [], defer(yieldValue), errCont
+          while true
+            rv = new iced.Rendezvous
+            # depending on whether send() or throw() got called, call the same
+            # method on the child generator
+            errCont(new YieldException(rv.id(gen.send).defer(v),
+              rv.id(gen.throw).defer(v), yieldValue))
+            await rv.wait defer genFn
+            await genFn.__apply__ gen, [v], defer(yieldValue), (e) ->
+              if e instanceof StopIteration
+                cont e.value
+              else if v instanceof ReturnException
+                cont()
+              else
+                errCont e
+        else
+          if node.argument? then await interp node.argument, env, defer(yieldValue), errCont
+          errCont(new YieldException cont, errCont, yieldValue)
       else
         errCont("Unrecognized node '#{node.type}'!")
   catch e

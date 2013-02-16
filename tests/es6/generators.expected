@@ -1,20 +1,42 @@
 Generator 1
-Iterator received hi
+Generator received hi
 1
-Iterator received hi
+Generator received hi
 2
-Iterator received hi
+Generator received hi
 3
-Iterator received hi
+Generator received hi
 4
-Iterator received hi
-Shutting down iterator
-iterator exhausted
+Generator received hi
+Shutting down generator
+Generator exhausted, returned undefined
 Generator 2
-Shutting down iterator
+Shutting down generator
 undefined
-iterator exhausted
+Generator exhausted, returned undefined
 Generator 3
-Iterator caught [Error: injected error]
-Shutting down iterator
-iterator exhausted
+Generator caught [Error: injected error]
+Shutting down generator
+generator exhausted, returned undefined
+Testing return value
+Generator 4
+Generator exhausted, returned 2
+Testing yield*
+Generator 5
+1
+2
+0
+2
+4
+0
+3
+6
+Generator exhausted, returned undefined
+Generator 6
+Inner generator caught [Error: injected error]
+2
+4
+0
+3
+6
+Generator exhausted, returned undefined
