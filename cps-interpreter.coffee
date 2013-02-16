@@ -131,7 +131,8 @@ class Generator
         thisArg.__state__ = EXECUTING
         thisArg.__errCont__ args[0])
 
-  iterate: -> @
+  iterator: new CPSFunction('iterator', null, (thisArg, args, cont, errCont) ->
+    cont thisArg)
 
 interp = (node, env=new Environment, cont, errCont) ->
   try
@@ -249,14 +250,31 @@ interp = (node, env=new Environment, cont, errCont) ->
       when 'ForInStatement'
         await interp node.left, env, defer(), errCont
         await interp node.right, env, defer(obj), errCont
-        for k of obj
+        id =
           if node.left.type is 'VariableDeclaration'
-            await assign node.left.declarations[0].id, k, env, defer(), errCont
+            node.left.declarations[0].id
           else
-            await assign node.left, k, env, defer(), errCont
+            node.left
+        for k of obj
+          await assign id, k, env, defer(), errCont
           await interp node.body, env, bodyCont = defer(),
             makeLoopCont(node.body, env, bodyCont, cont, errCont)
         cont()
+      when 'ForOfStatement'
+        await interp node.left, env, defer(), errCont
+        await interp node.right, env, defer(iterable), errCont
+        id =
+          if node.left.type is 'VariableDeclaration'
+            node.left.declarations[0].id
+          else
+            node.left
+        await iterable.iterator.__apply__ iterable, [], defer(iterator), errCont
+        while true
+          await iterator.next.__apply__ iterator, [], defer(v), (e) ->
+            if e instanceof StopIteration then cont() else errCont e
+          await assign id, v, env, defer(), errCont
+          await interp node.body, env, bodyCont = defer(),
+            makeLoopCont(node.body, env, bodyCont, cont, errCont)
       when 'BreakStatement'
         errCont(new BreakException)
       when 'ContinueStatement'
