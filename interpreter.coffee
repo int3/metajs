@@ -16,7 +16,7 @@ class InterpretedFunction
     argsObject = {}
     calleeNode.env.insert "arguments", argsObject
     for arg, i in args
-      calleeNode.env.insert calleeNode.params[i].name, arg
+      calleeNode.env.insert calleeNode.params[i].name, arg if i < calleeNode.params.length
       argsObject[i] = arg
     Util.defineNonEnumerable argsObject, 'length', args.length
     calleeNode.env.insert 'this', _this
