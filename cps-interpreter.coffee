@@ -30,7 +30,31 @@ class CPSFunction
     await this.__apply__ thisArg, args, defer(result), errCont
     return result
 
-passThroughScheduler = (node, env, type, callback) -> callback
+passThroughScheduler = (node, env, cont, errCont) -> [cont, errCont]
+
+timeoutScheduler = (node, env, cont, errCont) ->
+
+  scheduledCont = () =>
+    that = this
+    args = arguments
+    setTimeout(
+      () ->
+        try
+          cont.apply(that, args)
+        catch e
+          errCont(e)
+      0)
+    return
+
+  scheduleErrCont = () =>
+    that = this
+    args = arguments
+    setTimeout(
+      () ->
+        errCont.apply(that, args)
+      0)
+    return
+  [scheduledCont, scheduleErrCont]
 
 createInterpreter = (scheduler=passThroughScheduler) ->
 
@@ -139,8 +163,7 @@ createInterpreter = (scheduler=passThroughScheduler) ->
       cont thisArg)
 
   interp = (node, env=new Environment, cont, errCont) ->
-    cont = scheduler node, env, 'result', cont
-    errCont = scheduler node, env, 'error', errCont
+    [cont, errCont] = scheduler node, env, cont, errCont
     try
       switch node.type
         when 'Program', 'BlockStatement'
