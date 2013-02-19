@@ -1,10 +1,16 @@
-#! /usr/bin/env iced
-
-fs = require 'fs'
 esprima = require 'esprima'
-{Util} = require './util/util'
-{interpreterGlobal, InterpreterException, ReturnException, BreakException,
-  ContinueException, Environment} = require './util/interp-util'
+{Util, Map} = require './util'
+
+root = exports
+
+class InterpreterException
+
+class ReturnException extends InterpreterException
+  constructor: (@value) ->
+
+class BreakException extends InterpreterException
+
+class ContinueException extends InterpreterException
 
 class YieldException extends InterpreterException
   constructor: (@cont, @errCont, @value) ->
@@ -13,14 +19,72 @@ class StopIteration
   constructor: (@value) ->
   toString: -> "StopIteration"
 
-Util.defineNonEnumerable interpreterGlobal, 'StopIteration', StopIteration
+root.Environment = class Environment
+  constructor: (@scopeChain=[new Map], @currentScope=0, @strict=false) ->
+    @global = {}
+    if global?
+      nativeGlobal = global
+      globalName = 'global'
+    else
+      nativeGlobal = window
+      globalName = 'window'
+    @global[k] = v for k, v of nativeGlobal
+    nonEnumerable = ['Object', 'String', 'Function', 'RegExp', 'Number', 'Boolean',
+      'Date', 'Math', 'Error', 'JSON', 'eval', 'toString', 'undefined']
+    Util.defineNonEnumerable @global, k, nativeGlobal[k] for k in nonEnumerable
+    Util.defineNonEnumerable @global, globalName, @global
+    Util.defineNonEnumerable @global, 'StopIteration', StopIteration
+
+  copy: -> new Environment @scopeChain[..], @currentScope, @strict
+
+  getGlobalEnv: -> new Environment @scopeChain[..0], 0, @strict
+
+  increaseScope: (lexicalOnly) ->
+    @scopeChain.push new Map
+    @currentScope++ unless lexicalOnly
+    Util.last(@scopeChain)
+
+  decreaseScope: ->
+    @scopeChain.pop()
+    @currentScope = Math.min @currentScope, @scopeChain.length - 1
+    Util.last(@scopeChain)
+
+  insert: (name, value) ->
+    if name is 'this' and not @strict
+      if not value?
+        value = @global
+      else if (t = typeof value) not in ['object', 'function']
+        value = new @global[t.charAt(0).toUpperCase() + t[1..]] value
+    @scopeChain[@currentScope].set(name, value)
+
+  update: (name, value) ->
+    for i in [@scopeChain.length - 1 .. 0] by -1
+      if @scopeChain[i].has(name)
+        return @scopeChain[i].set(name, value)
+    throw new ReferenceError "Tried to update nonexistent var '#{name}'"
+
+  globalInsert: (name, value) ->
+    @scopeChain[0].set(name, value)
+
+  has: (name) ->
+    for i in [@scopeChain.length - 1 .. 0] by -1
+      return true if @scopeChain[i].has(name)
+    name of @global
+
+  resolve: (name) ->
+    for i in [@scopeChain.length - 1 .. 0] by -1
+      return @scopeChain[i].get(name) if @scopeChain[i].has(name)
+    return @global[name] if name of @global
+    throw new ReferenceError "Unable to resolve #{JSON.stringify name}"
+
+  toString: -> scope.cache for scope in @scopeChain
 
 makeArgsObject = (argsArray) ->
   argsObject = {}
   argsObject[i] = arg for arg, i in argsArray
   Util.defineNonEnumerable argsObject, 'length', argsArray.length
 
-class CPSFunction
+root.CPSFunction = class CPSFunction
   constructor: (@name, @__env__, __apply__) ->
     @__apply__ ?= __apply__
     @__ctor__ = (new Function "return function #{@name}() {}")()
@@ -41,7 +105,7 @@ class InterpretedFunction extends CPSFunction
     # 'arguments'
     @__env__.insert(param.name, args[i]) for param, i in @__node__.params
     @__env__.insert 'this', thisArg
-    await interp @__node__.body, @__env__, defer(result), (e) =>
+    await root.evaluate @__node__.body, @__env__, defer(result), (e) =>
       if e instanceof ReturnException
         @__env__.decreaseScope()
         cont(e.value)
@@ -80,7 +144,7 @@ class Generator
       when NEWBORN
         if v isnt undefined then throw new TypeError
         thisArg.__state__ = EXECUTING
-        await interp thisArg.__node__.body, thisArg.__env__, bodyCont = defer(rv), (e) ->
+        await root.evaluate thisArg.__node__.body, thisArg.__env__, bodyCont = defer(rv), (e) ->
           if e instanceof YieldException
             thisArg.__state__ = SUSPENDED
             thisArg.__cont__ = e.cont
@@ -134,15 +198,15 @@ class Generator
   iterator: new CPSFunction('iterator', null, (thisArg, args, cont, errCont) ->
     cont thisArg)
 
-interp = (node, env=new Environment, cont, errCont) ->
+root.evaluate = (node, env, cont, errCont) ->
   try
     switch node.type
       when 'Program', 'BlockStatement'
         for stmt, i in node.body
           env.strict ||= i == 0 and stmt.expression?.value is 'use strict'
-          await interp stmt, env, defer(v), errCont
+          await root.evaluate stmt, env, defer(v), errCont
           return cont(v) if node.type is 'Program' and i == node.body.length - 1 # for eval's return value
-        setTimeout cont(), 0 # avoid stack overflow
+        process.nextTick cont # avoid stack overflow
       when 'FunctionDeclaration', 'FunctionExpression'
         name = node.id?.name ? ''
         ifn = new (if node.generator then GeneratorFunction else InterpretedFunction) name, env.copy(), node
@@ -151,16 +215,16 @@ interp = (node, env=new Environment, cont, errCont) ->
         cont(ifn)
       when 'VariableDeclaration'
         for dec in node.declarations
-          await interp dec, env, defer(result), errCont
+          await root.evaluate dec, env, defer(result), errCont
         cont()
       when 'VariableDeclarator'
         if node.init?
-          await interp node.init, env, defer(init), errCont
+          await root.evaluate node.init, env, defer(init), errCont
         else
           init = undefined
         cont(env.insert node.id.name, init, env)
       when 'ExpressionStatement'
-        interp node.expression, env, cont, errCont
+        root.evaluate node.expression, env, cont, errCont
       when 'CallExpression'
         callee = null
         if node.callee.type is 'MemberExpression'
@@ -168,10 +232,10 @@ interp = (node, env=new Environment, cont, errCont) ->
           callee = thisArg[calleeName]
         else
           thisArg = undefined
-          await interp node.callee, env, defer(callee), errCont
+          await root.evaluate node.callee, env, defer(callee), errCont
         args =
           for arg in node.arguments
-            await interp arg, env, defer(argResult), errCont
+            await root.evaluate arg, env, defer(argResult), errCont
             argResult
         if callee == eval
           return cont(args[0]) unless Util.isString args[0]
@@ -185,19 +249,19 @@ interp = (node, env=new Environment, cont, errCont) ->
             else
               null
           if fnName is 'eval'
-            interp ast, env, cont, errCont
+            root.evaluate ast, env, cont, errCont
           else
-            interp ast, env.getGlobalEnv(), cont, errCont
+            root.evaluate ast, env.getGlobalEnv(), cont, errCont
         else
           if callee instanceof CPSFunction
             callee.__apply__ thisArg, args, cont, errCont
           else
             cont callee.apply thisArg, args
       when 'NewExpression'
-        await interp node.callee, env, defer(callee), errCont
+        await root.evaluate node.callee, env, defer(callee), errCont
         args =
           for arg in node.arguments
-            await interp arg, env, defer(result), errCont
+            await root.evaluate arg, env, defer(result), errCont
             result
         if callee.__ctor__?
           obj = new callee.__ctor__
@@ -213,43 +277,43 @@ interp = (node, env=new Environment, cont, errCont) ->
         cont(obj)
       #*** Control Flow ***#
       when 'IfStatement', 'ConditionalExpression'
-        await interp node.test, env, defer(test), errCont
+        await root.evaluate node.test, env, defer(test), errCont
         if (test)
-          interp node.consequent, env, cont, errCont
+          root.evaluate node.consequent, env, cont, errCont
         else if node.alternate?
-          interp node.alternate, env, cont, errCont
+          root.evaluate node.alternate, env, cont, errCont
         else
           cont()
       when 'WhileStatement'
         while (true)
           # Test
-          await interp node.test, env, defer(test), errCont
+          await root.evaluate node.test, env, defer(test), errCont
           return cont() if not test
           # Body
-          await interp node.body, env, bodyCont = defer(),
+          await root.evaluate node.body, env, bodyCont = defer(),
             makeLoopCont(node.body, env, bodyCont, cont, errCont)
       when 'DoWhileStatement'
         while (true)
           # Body
-          await interp node.body, env, bodyCont = defer(),
+          await root.evaluate node.body, env, bodyCont = defer(),
             makeLoopCont(node.body, env, bodyCont, cont, errCont)
           # Test
-          await interp node.test, env, defer(test), errCont
+          await root.evaluate node.test, env, defer(test), errCont
           return cont() if not test
       when 'ForStatement'
-        await interp node.init, env, defer(), errCont
+        await root.evaluate node.init, env, defer(), errCont
         while (true)
           # Test
-          await interp node.test, env, defer(test), errCont
+          await root.evaluate node.test, env, defer(test), errCont
           return cont() if not test
           # Body
-          await interp node.body, env, bodyCont = defer(),
+          await root.evaluate node.body, env, bodyCont = defer(),
             makeLoopCont(node.body, env, bodyCont, cont, errCont)
           # Update
-          await interp node.update, env, defer(), errCont
+          await root.evaluate node.update, env, defer(), errCont
       when 'ForInStatement'
-        await interp node.left, env, defer(), errCont
-        await interp node.right, env, defer(obj), errCont
+        await root.evaluate node.left, env, defer(), errCont
+        await root.evaluate node.right, env, defer(obj), errCont
         id =
           if node.left.type is 'VariableDeclaration'
             node.left.declarations[0].id
@@ -257,12 +321,12 @@ interp = (node, env=new Environment, cont, errCont) ->
             node.left
         for k of obj
           await assign id, k, env, defer(), errCont
-          await interp node.body, env, bodyCont = defer(),
+          await root.evaluate node.body, env, bodyCont = defer(),
             makeLoopCont(node.body, env, bodyCont, cont, errCont)
         cont()
       when 'ForOfStatement'
-        await interp node.left, env, defer(), errCont
-        await interp node.right, env, defer(iterable), errCont
+        await root.evaluate node.left, env, defer(), errCont
+        await root.evaluate node.right, env, defer(iterable), errCont
         id =
           if node.left.type is 'VariableDeclaration'
             node.left.declarations[0].id
@@ -273,7 +337,7 @@ interp = (node, env=new Environment, cont, errCont) ->
           await iterator.next.__apply__ iterator, [], defer(v), (e) ->
             if e instanceof StopIteration then cont() else errCont e
           await assign id, v, env, defer(), errCont
-          await interp node.body, env, bodyCont = defer(),
+          await root.evaluate node.body, env, bodyCont = defer(),
             makeLoopCont(node.body, env, bodyCont, cont, errCont)
       when 'BreakStatement'
         errCont(new BreakException)
@@ -283,27 +347,30 @@ interp = (node, env=new Environment, cont, errCont) ->
         if node.argument is null
           errCont new ReturnException undefined
         else
-          await interp node.argument, env, defer(result), errCont
+          await root.evaluate node.argument, env, defer(result), errCont
           errCont new ReturnException result
       when 'ThrowStatement'
-        await interp node.argument, env, defer(result), errCont
+        await root.evaluate node.argument, env, defer(result), errCont
         errCont result
       # may be called more than once if try statement contains a yield
       when 'TryStatement'
         finalizeAndThrow = (e) ->
           if node.finalizer
-            await interp node.finalizer, env, defer(), errCont
+            await root.evaluate node.finalizer, env, defer(), errCont
           errCont e
         finalizeAndCont = ->
-          if node.finalizer then interp node.finalizer, env, cont, errCont else cont()
+          if node.finalizer
+            root.evaluate node.finalizer, env, cont, errCont
+          else
+            cont()
 
-        await interp node.block, env, defer(), (e) ->
+        await root.evaluate node.block, env, defer(), (e) ->
           if e instanceof YieldException
             errCont e
           else if e not instanceof InterpreterException and node.handlers.length > 0
             catchEnv = env.increaseScope true
             catchEnv.set node.handlers[0].param.name, e
-            await interp node.handlers[0], env, defer(), (e) ->
+            await root.evaluate node.handlers[0], env, defer(), (e) ->
               env.decreaseScope()
               finalizeAndThrow(e)
             env.decreaseScope()
@@ -312,23 +379,23 @@ interp = (node, env=new Environment, cont, errCont) ->
             finalizeAndThrow(e)
         finalizeAndCont()
       when 'CatchClause'
-        interp node.body, env, cont, errCont
+        root.evaluate node.body, env, cont, errCont
       #*** Operator Expressions ***#
       when 'LogicalExpression'
-        await interp node.left, env, defer(lhs), errCont
+        await root.evaluate node.left, env, defer(lhs), errCont
         switch node.operator
           when '&&'
             # `lhs && await ...` will not short-circuit due to a bug in IcedCoffeeScript
-            if lhs then await interp node.right, env, defer(rhs), errCont
+            if lhs then await root.evaluate node.right, env, defer(rhs), errCont
             cont(lhs && rhs)
           when '||'
-            if not lhs then await interp node.right, env, defer(rhs), errCont
+            if not lhs then await root.evaluate node.right, env, defer(rhs), errCont
             cont(lhs || rhs)
           else
             errCont "Unrecognized operator #{node.operator}"
       when 'BinaryExpression'
-        await interp node.left, env, defer(lhs), errCont
-        await interp node.right, env, defer(rhs), errCont
+        await root.evaluate node.left, env, defer(lhs), errCont
+        await root.evaluate node.right, env, defer(rhs), errCont
         switch node.operator
           when '+'
             cont(lhs + rhs)
@@ -371,7 +438,7 @@ interp = (node, env=new Environment, cont, errCont) ->
           else
             errCont("Unrecognized operator #{node.operator}")
       when 'AssignmentExpression'
-        await interp node.right, env, defer(value), errCont
+        await root.evaluate node.right, env, defer(value), errCont
         if node.operator is '='
           assign node.left, value, env, cont, errCont
         else
@@ -403,7 +470,7 @@ interp = (node, env=new Environment, cont, errCont) ->
             object[property] = original
           cont(original)
       when 'UpdateExpression'
-        await interp node.argument, env, defer(original), errCont
+        await root.evaluate node.argument, env, defer(original), errCont
         if node.operator is '++'
           newValue = original + 1
         else # '--'
@@ -425,7 +492,7 @@ interp = (node, env=new Environment, cont, errCont) ->
             node.argument.type is 'Identifier' and not env.has node.argument.name
           cont('undefined')
         else
-          await interp node.argument, env, defer(arg), errCont
+          await root.evaluate node.argument, env, defer(arg), errCont
           switch node.operator
             when '-'
               cont(-arg)
@@ -450,16 +517,16 @@ interp = (node, env=new Environment, cont, errCont) ->
       when 'ObjectExpression'
         obj = {}
         for prop in node.properties
-          await interp prop.value, env, defer(propValue), errCont
+          await root.evaluate prop.value, env, defer(propValue), errCont
           obj[prop.key.name ? prop.key.value] = propValue
         cont(obj)
       when 'ArrayExpression'
         cont(
           for el in node.elements
-            await interp el, env, defer(elValue), errCont)
+            await root.evaluate el, env, defer(elValue), errCont)
       when 'YieldExpression'
         if node.delegate # yield*
-          await interp node.argument, env, defer(gen), errCont
+          await root.evaluate node.argument, env, defer(gen), errCont
           await gen.send.__apply__ gen, [], defer(yieldValue), errCont
           while true
             rv = new iced.Rendezvous
@@ -476,7 +543,8 @@ interp = (node, env=new Environment, cont, errCont) ->
               else
                 errCont e
         else
-          if node.argument? then await interp node.argument, env, defer(yieldValue), errCont
+          if node.argument?
+            await root.evaluate node.argument, env, defer(yieldValue), errCont
           errCont(new YieldException cont, errCont, yieldValue)
       else
         errCont("Unrecognized node '#{node.type}'!")
@@ -484,12 +552,12 @@ interp = (node, env=new Environment, cont, errCont) ->
     errCont e
 
 evalMemberExpr = (node, env, cont, errCont) ->
-  await interp node.object, env, defer(object), errCont
+  await root.evaluate node.object, env, defer(object), errCont
   propNode = node.property
   if propNode.type is 'Identifier' and not node.computed
     cont(object, propNode.name)
   else
-    await interp propNode, env, defer(property), errCont
+    await root.evaluate propNode, env, defer(property), errCont
     cont(object, property)
 
 assign = (node, value, env, cont, errCont) ->
@@ -514,22 +582,3 @@ makeLoopCont = (body, env, bodyCont, cont, errCont) ->
       bodyCont()
     else
       errCont(e)
-
-toplevel = ->
-  repl = require 'repl'
-  env = new Environment
-  repl.start
-    eval: (cmd, ctx, filename, callback) ->
-      await interp (esprima.parse cmd[1..-2], loc: true), env, callback, (e) ->
-        callback("Error: #{e}")
-
-if require.main is module
-  {argv} = require 'optimist'
-  if argv._.length < 1
-    toplevel()
-  else
-    parsed = esprima.parse (fs.readFileSync argv._[0]), loc: true
-    # interp parsed, new Environment
-    interp parsed, new Environment, (->), (e) ->
-      console.log "Error: #{e}"
-      process.exit 1

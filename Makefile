@@ -1,10 +1,17 @@
 TESTS = $(wildcard tests/*.js)
 ES6TESTS = $(wildcard tests/es6/*.js)
-INTERPRETER = interpreter.coffee
+LIB_COFFEE = $(wildcard lib/*.coffee)
+LIB_JS = $(LIB_COFFEE:.coffee=.js)
+BROWSER_COFFEE = $(wildcard browser/*.coffee)
 
-%.actual: %.js $(INTERPRETER)
-	@echo "testing $< with $(INTERPRETER)... \c"
-	@./$(INTERPRETER) $< > $@
+browser: $(BROWSER_COFFEE:.coffee=.js) browser/bundle.js
+
+test: $(TESTS:.js=.result) $(ES6TESTS:.js=.result) $(LIB_JS)
+	echo $(LIB_JS)
+
+%.actual: %.js $(LIB_JS) repl.js
+	@echo "testing $<... \c"
+	@node repl.js $< > $@
 
 %.expected: %.js
 	@node $? > $@
@@ -13,11 +20,11 @@ INTERPRETER = interpreter.coffee
 	@diff $?
 	@echo "passed"
 
-test: $(TESTS:.js=.result)
+browser/bundle.js: $(LIB_JS)
+	browserify $^ -o browser/bundle.js --exports require
 
-test-es6: $(ES6TESTS:.js=.result)
+%.js: %.coffee
+	iced -c -I browserify $<
 
-test-all:
-	@make test INTERPRETER=interpreter.coffee
-	@make test INTERPRETER=cps-interpreter.coffee
-	@make test-es6 INTERPRETER=cps-interpreter.coffee
+.SECONDARY: $(LIB_JS)
+.PHONY: browser

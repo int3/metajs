@@ -1,6 +1,4 @@
-root = window ? exports
-
-root.Util =
+exports.Util =
   last: (arr) -> arr[arr.length - 1]
 
   isString: (s) -> typeof s == 'string' || s instanceof String
@@ -13,9 +11,9 @@ root.Util =
       configurable: true
 
 if Map? # polyfill
-  root.Map = Map
+  exports.Map = Map
 else
-  class root.Map
+  class exports.Map
     constructor: ->
       @cache = Object.create null
       @proto_cache = undefined
@@ -38,3 +36,8 @@ else
         @proto_cache = value
         @proto_set = true
       value
+
+    items: ->
+      items = ([k,v] for k, v of @cache)
+      items.push ['__proto__', @proto_cache] if @proto_set
+      items
