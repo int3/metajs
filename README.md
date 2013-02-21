@@ -39,7 +39,7 @@ Testing
 Contributors
 ------------
 
-[omphalos](github.com/omphalos)
+* [omphalos](github.com/omphalos)
 
 [1]: http://esprima.org/
 [2]: http://maxtaco.github.com/coffee-script/
