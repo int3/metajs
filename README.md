@@ -1,8 +1,7 @@
 metajs
 ======
 
-A CPS-style Javascript metacircular interpreter, written in
-[IcedCoffeeScript][2].
+A CPS Javascript metacircular interpreter, written in [IcedCoffeeScript][2].
 
 [Esprima][1] is used for the parser.
 
