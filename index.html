@@ -1,0 +1,41 @@
+<html>
+  <head>
+    <link rel='stylesheet' href='style.css'/>
+    <link rel='stylesheet' href='vendor/codemirror.css'/>
+    <script src='vendor/codemirror.js'></script>
+    <script src='vendor/javascript.js'></script>
+    <!-- TODO remove http prefixes before push -->
+    <!--
+    <script src='http://code.jquery.com/jquery-1.9.1.min.js'></script>
+    -->
+    <script src='vendor/jquery-1.9.1.min.js'></script>
+    <script src='setup.js'></script>
+  </head>
+  <body>
+    <h1>metajs: <small>visualize javascript AST execution</small></h1>
+    <form id='example-form'>
+      <label for='example-box'>Load Example:</label>
+      <select id='example-box'>
+        <option href='examples/ycomb.js'>Y Combinator</option>
+        <option href='examples/generators.js'>ES6 Generators</option>
+      </select>
+    </form>
+    <a id='about-link' href='https://github.com/int3/metajs/blob/master/README.md'>About</a>
+    <div style='clear:both'></div>
+    <textarea id='code'></textarea>
+    <div id='activeStates'><ul></ul></div>
+    <div id='currentEnv'></div>
+    <div style='clear:both'></div>
+    <div class='btn-group'>
+      <input id='run-btn' class='btn' type='button' value='Run'/>
+      <input id='step-btn' class='btn' type='button' value='Step'/>
+      <input id='auto-step-btn' class='btn' type='button' value='Auto Step'/>
+    </div>
+    <div class='modal hide' id='modal'>
+      <button id='modalClose' type='button' class='close'>&times;</button>
+      <div class='modal-body' id='modalContent'></div>
+    </div>
+    <script src='bundle.js'></script>
+    <script src='metajs.js'></script>
+  </body>
+</html>
