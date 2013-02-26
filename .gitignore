@@ -4,3 +4,5 @@ node_modules
 *~
 *.actual
 *.expected
+browser/*.js
+lib/*.js

@@ -189,9 +189,16 @@ $('#auto-step-btn').click ->
   if $(@).attr('value') is 'Pause'
     interpreter.continuer = Continuers.toNextStep
     $(@).attr 'value', 'Auto Step'
+    $('#example-box').removeAttr 'disabled'
+    $('#step-btn').removeAttr 'disabled'
   else
     interpreter.continuer = Continuers.autoStep
     $(@).attr 'value', 'Pause'
+    $('#example-box').attr 'disabled', 'disabled'
+    $('#step-btn').attr 'disabled', 'disabled'
     Continuations.next()
 
-Message.listen 'interpreter:done', -> $('#auto-step-btn').attr 'value', 'Auto Step'
+Message.listen 'interpreter:done', -> 
+  $('#auto-step-btn').removeAttr 'disabled'
+  $('#example-box').removeAttr 'disabled'
+

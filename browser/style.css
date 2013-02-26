@@ -12,10 +12,17 @@ a {
 }
 
 body {
+  min-width: 720px;
   width: 75%;
   margin: 0 auto;
   font-family: Monaco, Menlo, Consolas, "Courier New", monospace;
   font-size: 14px;
+}
+
+body > div {
+  -webkit-border-radius: 4px;
+     -moz-border-radius: 4px;
+          border-radius: 4px;
 }
 
 #example-form {

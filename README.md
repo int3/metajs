@@ -9,7 +9,7 @@ Setup
 -----
 
     npm install
-    npm install -g browserify iced-coffee-script
+    npm install -g browserify@1.17.3 iced-coffee-script
 
 Usage
 -----
@@ -38,7 +38,7 @@ Testing
 Contributors
 ------------
 
-* [omphalos](github.com/omphalos)
+* [omphalos](https://github.com/omphalos)
 
 [1]: http://esprima.org/
 [2]: http://maxtaco.github.com/coffee-script/
