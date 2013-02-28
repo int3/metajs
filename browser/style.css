@@ -379,3 +379,7 @@ button.close {
 
 .atom-value { color: #219; }
 .number-value { color: #164; }
+
+.CodeMirror.readOnly {
+    background-color: #f9f9f9;
+}

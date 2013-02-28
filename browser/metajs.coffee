@@ -3,6 +3,18 @@ esprima = require 'esprima'
 interpreter = require './lib/interpreter'
 {Environment} = interpreter
 
+editor = CodeMirror.fromTextArea(document.getElementById('code'), mode: 'javascript')
+
+disableEditing = () ->
+  if not $('.CodeMirror').hasClass('readOnly')
+    editor.setOption('readOnly', true)
+    $('.CodeMirror').addClass('readOnly')
+
+enableEditing = () ->
+  if $('.CodeMirror').hasClass('readOnly')
+    editor.setOption('readOnly', false)
+    $('.CodeMirror').removeClass('readOnly')
+
 Message = do ->
   messageMap = {}
   silence = {}
@@ -62,8 +74,6 @@ Message.listen 'interpreter:call-continue', ->
   activeStates.pop()
 
 Message.listen 'interpreter:done', -> Message.send 'state:render'
-
-editor = $('.CodeMirror')[0].CodeMirror
 
 editor.on 'change', ->
   activeStates = []
@@ -169,6 +179,7 @@ $(document).keydown (e) ->
 $('#modalClose').click -> $('#modal').hide()
 
 $('#run-btn').click ->
+  disableEditing()
   interpreter.continuer = Continuers.toFinish
   Message.squelch 'state:render' # optimization
   latestState = null
@@ -182,10 +193,12 @@ $('#run-btn').click ->
   Continuations.next()
 
 $('#step-btn').click ->
+  disableEditing()
   interpreter.continuer = Continuers.toNextStep
   Continuations.next()
 
 $('#auto-step-btn').click ->
+  disableEditing()
   if $(@).attr('value') is 'Pause'
     interpreter.continuer = Continuers.toNextStep
     $(@).attr 'value', 'Auto Step'
@@ -201,4 +214,5 @@ $('#auto-step-btn').click ->
 Message.listen 'interpreter:done', -> 
   $('#auto-step-btn').removeAttr 'disabled'
   $('#example-box').removeAttr 'disabled'
+  enableEditing()
 
