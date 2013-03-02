@@ -10,8 +10,21 @@ exports.Util =
       enumerable: false
       configurable: true
 
-if Map? # polyfill
+# polyfill
+if Map?
+
+  if not Map.prototype.items
+    Map.prototype.items = () ->
+      results = []
+      i = this.iterator();
+      size = this.size()
+      if size
+        for num in [1..size]
+          results.push(i.next())
+      results
+
   exports.Map = Map
+
 else
   class exports.Map
     constructor: ->

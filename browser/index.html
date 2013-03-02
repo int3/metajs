@@ -9,7 +9,6 @@
     <script src='http://code.jquery.com/jquery-1.9.1.min.js'></script>
     -->
     <script src='vendor/jquery-1.9.1.min.js'></script>
-    <script src='setup.js'></script>
   </head>
   <body>
     <h1>metajs: <small>visualize javascript AST execution</small></h1>
@@ -35,6 +34,7 @@
       <button id='modalClose' type='button' class='close'>&times;</button>
       <div class='modal-body' id='modalContent'></div>
     </div>
+    <script type="text/javascript">CodeMirror.fromTextArea(document.getElementById('code'), { mode: 'javascript' })</script>
     <script src='bundle.js'></script>
     <script src='metajs.js'></script>
   </body>
