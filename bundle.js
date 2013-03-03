@@ -5946,59 +5946,55 @@ require.define("/lib/util.js",function(require,module,exports,__dirname,__filena
     }
   };
 
-  if (typeof Map !== "undefined" && Map !== null) {
-    exports.Map = Map;
-  } else {
-    exports.Map = (function() {
+  exports.Map = (function() {
 
-      function Map() {
-        this.cache = Object.create(null);
-        this.proto_cache = void 0;
-        this.proto_set = false;
+    function Map() {
+      this.cache = Object.create(null);
+      this.proto_cache = void 0;
+      this.proto_set = false;
+    }
+
+    Map.prototype.get = function(key) {
+      key = key.toString();
+      if (key !== '__proto__') return this.cache[key];
+      return this.proto_cache;
+    };
+
+    Map.prototype.has = function(key) {
+      key = key.toString();
+      if (key !== '__proto__') return key in this.cache;
+      return this.proto_set;
+    };
+
+    Map.prototype.set = function(key, value) {
+      if (key.toString() !== '__proto__') {
+        this.cache[key] = value;
+      } else {
+        this.proto_cache = value;
+        this.proto_set = true;
       }
+      return value;
+    };
 
-      Map.prototype.get = function(key) {
-        key = key.toString();
-        if (key !== '__proto__') return this.cache[key];
-        return this.proto_cache;
-      };
-
-      Map.prototype.has = function(key) {
-        key = key.toString();
-        if (key !== '__proto__') return key in this.cache;
-        return this.proto_set;
-      };
-
-      Map.prototype.set = function(key, value) {
-        if (key.toString() !== '__proto__') {
-          this.cache[key] = value;
-        } else {
-          this.proto_cache = value;
-          this.proto_set = true;
+    Map.prototype.items = function() {
+      var items, k, v;
+      items = (function() {
+        var _ref, _results;
+        _ref = this.cache;
+        _results = [];
+        for (k in _ref) {
+          v = _ref[k];
+          _results.push([k, v]);
         }
-        return value;
-      };
+        return _results;
+      }).call(this);
+      if (this.proto_set) items.push(['__proto__', this.proto_cache]);
+      return items;
+    };
 
-      Map.prototype.items = function() {
-        var items, k, v;
-        items = (function() {
-          var _ref, _results;
-          _ref = this.cache;
-          _results = [];
-          for (k in _ref) {
-            v = _ref[k];
-            _results.push([k, v]);
-          }
-          return _results;
-        }).call(this);
-        if (this.proto_set) items.push(['__proto__', this.proto_cache]);
-        return items;
-      };
+    return Map;
 
-      return Map;
-
-    })();
-  }
+  })();
 
 }).call(this);
 
@@ -8180,59 +8176,55 @@ require.define("/lib/util.js",function(require,module,exports,__dirname,__filena
     }
   };
 
-  if (typeof Map !== "undefined" && Map !== null) {
-    exports.Map = Map;
-  } else {
-    exports.Map = (function() {
+  exports.Map = (function() {
 
-      function Map() {
-        this.cache = Object.create(null);
-        this.proto_cache = void 0;
-        this.proto_set = false;
+    function Map() {
+      this.cache = Object.create(null);
+      this.proto_cache = void 0;
+      this.proto_set = false;
+    }
+
+    Map.prototype.get = function(key) {
+      key = key.toString();
+      if (key !== '__proto__') return this.cache[key];
+      return this.proto_cache;
+    };
+
+    Map.prototype.has = function(key) {
+      key = key.toString();
+      if (key !== '__proto__') return key in this.cache;
+      return this.proto_set;
+    };
+
+    Map.prototype.set = function(key, value) {
+      if (key.toString() !== '__proto__') {
+        this.cache[key] = value;
+      } else {
+        this.proto_cache = value;
+        this.proto_set = true;
       }
+      return value;
+    };
 
-      Map.prototype.get = function(key) {
-        key = key.toString();
-        if (key !== '__proto__') return this.cache[key];
-        return this.proto_cache;
-      };
-
-      Map.prototype.has = function(key) {
-        key = key.toString();
-        if (key !== '__proto__') return key in this.cache;
-        return this.proto_set;
-      };
-
-      Map.prototype.set = function(key, value) {
-        if (key.toString() !== '__proto__') {
-          this.cache[key] = value;
-        } else {
-          this.proto_cache = value;
-          this.proto_set = true;
+    Map.prototype.items = function() {
+      var items, k, v;
+      items = (function() {
+        var _ref, _results;
+        _ref = this.cache;
+        _results = [];
+        for (k in _ref) {
+          v = _ref[k];
+          _results.push([k, v]);
         }
-        return value;
-      };
+        return _results;
+      }).call(this);
+      if (this.proto_set) items.push(['__proto__', this.proto_cache]);
+      return items;
+    };
 
-      Map.prototype.items = function() {
-        var items, k, v;
-        items = (function() {
-          var _ref, _results;
-          _ref = this.cache;
-          _results = [];
-          for (k in _ref) {
-            v = _ref[k];
-            _results.push([k, v]);
-          }
-          return _results;
-        }).call(this);
-        if (this.proto_set) items.push(['__proto__', this.proto_cache]);
-        return items;
-      };
+    return Map;
 
-      return Map;
-
-    })();
-  }
+  })();
 
 }).call(this);
 

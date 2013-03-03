@@ -162,6 +162,18 @@
       return Message.send('state:render');
     });
     editor = $('.CodeMirror')[0].CodeMirror;
+    editor.disableEditing = function() {
+      if (!$('.CodeMirror').hasClass('readOnly')) {
+        editor.setOption('readOnly', true);
+        return $('.CodeMirror').addClass('readOnly');
+      }
+    };
+    editor.enableEditing = function() {
+      if ($('.CodeMirror').hasClass('readOnly')) {
+        editor.setOption('readOnly', false);
+        return $('.CodeMirror').removeClass('readOnly');
+      }
+    };
     editor.on('change', function() {
       activeStates = [];
       Message.send('state:render');
@@ -192,7 +204,7 @@
               return data = arguments[0];
             };
           })(),
-          lineno: 77
+          lineno: 87
         }));
         __iced_deferrals._fulfill();
       })(function() {
@@ -360,6 +372,7 @@
     });
     $('#run-btn').click(function() {
       var latestState;
+      editor.disableEditing();
       interpreter.continuer = Continuers.toFinish;
       Message.squelch('state:render');
       latestState = null;
@@ -378,21 +391,34 @@
       return Continuations.next();
     });
     $('#step-btn').click(function() {
+      editor.disableEditing();
       interpreter.continuer = Continuers.toNextStep;
       return Continuations.next();
     });
     $('#auto-step-btn').click(function() {
+      editor.disableEditing();
       if ($(this).attr('value') === 'Pause') {
         interpreter.continuer = Continuers.toNextStep;
-        return $(this).attr('value', 'Auto Step');
+        $(this).attr('value', 'Auto Step');
+        $('#example-box').removeAttr('disabled');
+        $('#step-btn').removeAttr('disabled');
+        return $('#run-btn').removeAttr('disabled', 'disabled');
       } else {
         interpreter.continuer = Continuers.autoStep;
         $(this).attr('value', 'Pause');
+        $('#example-box').attr('disabled', 'disabled');
+        $('#step-btn').attr('disabled', 'disabled');
+        $('#run-btn').attr('disabled', 'disabled');
         return Continuations.next();
       }
     });
     return Message.listen('interpreter:done', function() {
-      return $('#auto-step-btn').attr('value', 'Auto Step');
+      $('#auto-step-btn').removeAttr('disabled');
+      $('#example-box').removeAttr('disabled');
+      $('#step-btn').removeAttr('disabled');
+      $('#run-btn').removeAttr('disabled');
+      $('#auto-step-btn').attr('value', 'Auto Step');
+      return editor.enableEditing();
     });
   });
 
