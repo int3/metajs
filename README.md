@@ -1,9 +1,10 @@
 metajs
 ======
 
-A CPS Javascript metacircular interpreter, written in [IcedCoffeeScript][2].
+A CPS Javascript metacircular interpreter that visualizes script execution.
 
-[Esprima][1] is used for the parser.
+Written in [IcedCoffeeScript][2]. Uses [Esprima][1] for the parser and
+[CodeMirror][3] for the front-end.
 
 Setup
 -----
@@ -42,3 +43,4 @@ Contributors
 
 [1]: http://esprima.org/
 [2]: http://maxtaco.github.com/coffee-script/
+[3]: http://codemirror.net/
