@@ -10,47 +10,31 @@ exports.Util =
       enumerable: false
       configurable: true
 
-# polyfill
-if Map?
+class exports.Map
+  constructor: ->
+    @cache = Object.create null
+    @proto_cache = undefined
+    @proto_set = false
 
-  if not Map.prototype.items
-    Map.prototype.items = () ->
-      results = []
-      i = this.iterator();
-      size = this.size()
-      if size
-        for num in [1..size]
-          results.push(i.next())
-      results
+  get: (key) ->
+    key = key.toString()
+    return @cache[key] unless key is '__proto__'
+    return @proto_cache
 
-  exports.Map = Map
+  has: (key) ->
+    key = key.toString()
+    return key of @cache unless key is '__proto__'
+    return @proto_set
 
-else
-  class exports.Map
-    constructor: ->
-      @cache = Object.create null
-      @proto_cache = undefined
-      @proto_set = false
+  set: (key, value) ->
+    unless key.toString() is '__proto__'
+      @cache[key] = value
+    else
+      @proto_cache = value
+      @proto_set = true
+    value
 
-    get: (key) ->
-      key = key.toString()
-      return @cache[key] unless key is '__proto__'
-      return @proto_cache
-
-    has: (key) ->
-      key = key.toString()
-      return key of @cache unless key is '__proto__'
-      return @proto_set
-
-    set: (key, value) ->
-      unless key.toString() is '__proto__'
-        @cache[key] = value
-      else
-        @proto_cache = value
-        @proto_set = true
-      value
-
-    items: ->
-      items = ([k,v] for k, v of @cache)
-      items.push ['__proto__', @proto_cache] if @proto_set
-      items
+  items: ->
+    items = ([k,v] for k, v of @cache)
+    items.push ['__proto__', @proto_cache] if @proto_set
+    items
