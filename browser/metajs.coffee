@@ -65,6 +65,16 @@ Message.listen 'interpreter:done', -> Message.send 'state:render'
 
 editor = $('.CodeMirror')[0].CodeMirror
 
+editor.disableEditing = () ->
+  if not $('.CodeMirror').hasClass('readOnly')
+    editor.setOption('readOnly', true)
+    $('.CodeMirror').addClass('readOnly')
+
+editor.enableEditing = () ->
+  if $('.CodeMirror').hasClass('readOnly')
+    editor.setOption('readOnly', false)
+    $('.CodeMirror').removeClass('readOnly')
+
 editor.on 'change', ->
   activeStates = []
   Message.send 'state:render'
@@ -169,6 +179,7 @@ $(document).keydown (e) ->
 $('#modalClose').click -> $('#modal').hide()
 
 $('#run-btn').click ->
+  editor.disableEditing()
   interpreter.continuer = Continuers.toFinish
   Message.squelch 'state:render' # optimization
   latestState = null
@@ -182,16 +193,31 @@ $('#run-btn').click ->
   Continuations.next()
 
 $('#step-btn').click ->
+  editor.disableEditing()
   interpreter.continuer = Continuers.toNextStep
   Continuations.next()
 
 $('#auto-step-btn').click ->
+  editor.disableEditing()
   if $(@).attr('value') is 'Pause'
     interpreter.continuer = Continuers.toNextStep
     $(@).attr 'value', 'Auto Step'
+    $('#example-box').removeAttr 'disabled'
+    $('#step-btn').removeAttr 'disabled'
+    $('#run-btn').removeAttr 'disabled', 'disabled'
   else
     interpreter.continuer = Continuers.autoStep
     $(@).attr 'value', 'Pause'
+    $('#example-box').attr 'disabled', 'disabled'
+    $('#step-btn').attr 'disabled', 'disabled'
+    $('#run-btn').attr 'disabled', 'disabled'
     Continuations.next()
 
-Message.listen 'interpreter:done', -> $('#auto-step-btn').attr 'value', 'Auto Step'
+Message.listen 'interpreter:done', -> 
+  $('#auto-step-btn').removeAttr 'disabled'
+  $('#example-box').removeAttr 'disabled'
+  $('#step-btn').removeAttr 'disabled'
+  $('#run-btn').removeAttr 'disabled'
+  $('#auto-step-btn').attr 'value', 'Auto Step'
+  editor.enableEditing()
+
