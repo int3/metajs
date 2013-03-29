@@ -15,6 +15,9 @@ class ContinueException extends InterpreterException
 class YieldException extends InterpreterException
   constructor: (@cont, @errCont, @value) ->
 
+class JSException
+  constructor: (@error, @node, @env) ->
+
 class StopIteration
   constructor: (@value) ->
   toString: -> "StopIteration"
@@ -351,7 +354,7 @@ root.evaluate = (node, env, cont, errCont) ->
           errCont new ReturnException result
       when 'ThrowStatement'
         await root.evaluate node.argument, env, defer(result), errCont
-        errCont result
+        errCont(new JSException result, node, env)
       # may be called more than once if try statement contains a yield
       when 'TryStatement'
         finalizeAndThrow = (e) ->
@@ -368,11 +371,13 @@ root.evaluate = (node, env, cont, errCont) ->
           if e instanceof YieldException
             errCont e
           else if e not instanceof InterpreterException and node.handlers.length > 0
+            # if the error is a JSException then we have to unwrap it
+            unwrappedError = if e instanceof JSException then e.error else e
             catchEnv = env.increaseScope true
-            catchEnv.set node.handlers[0].param.name, e
-            await root.evaluate node.handlers[0], env, defer(), (e) ->
+            catchEnv.set node.handlers[0].param.name, unwrappedError
+            await root.evaluate node.handlers[0], env, defer(), (unwrappedError) ->
               env.decreaseScope()
-              finalizeAndThrow(e)
+              finalizeAndThrow(unwrappedError)
             env.decreaseScope()
             finalizeAndCont()
           else
@@ -549,7 +554,7 @@ root.evaluate = (node, env, cont, errCont) ->
       else
         errCont("Unrecognized node '#{node.type}'!")
   catch e
-    errCont e
+    errCont(new JSException e, node, env)
 
 evalMemberExpr = (node, env, cont, errCont) ->
   await root.evaluate node.object, env, defer(object), errCont
