@@ -17,6 +17,7 @@ class YieldException extends InterpreterException
 
 class JSException
   constructor: (@error, @node, @env) ->
+  toString: -> @error.toString()
 
 class StopIteration
   constructor: (@value) ->
