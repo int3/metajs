@@ -201,6 +201,8 @@ class Generator
 root.evaluate = (node, env, cont, errCont) ->
   try
     switch node.type
+      when 'EmptyStatement'
+        cont()
       when 'Program', 'BlockStatement'
         for stmt, i in node.body
           env.strict ||= i == 0 and stmt.expression?.value is 'use strict'

@@ -106,3 +106,5 @@ console.log(trueFn() || falseFn());
 console.log('||');
 console.log(trueFn() || trueFn());
 
+console.log('testing empty expression');
+;
