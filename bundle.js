@@ -6450,6 +6450,8 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
     ___iced_passed_deferral = iced.findDeferral(arguments);
     try {
       switch (node.type) {
+        case 'EmptyStatement':
+          return __iced_k(cont());
         case 'Program':
         case 'BlockStatement':
           (function(__iced_k) {
@@ -6490,7 +6492,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                         return v = arguments[0];
                       };
                     })(),
-                    lineno: 206
+                    lineno: 208
                   }), errCont);
                   __iced_deferrals._fulfill();
                 })(function() {
@@ -6550,7 +6552,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                         return result = arguments[0];
                       };
                     })(),
-                    lineno: 217
+                    lineno: 219
                   }), errCont);
                   __iced_deferrals._fulfill();
                 })(_next);
@@ -6576,7 +6578,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                       return init = arguments[0];
                     };
                   })(),
-                  lineno: 221
+                  lineno: 223
                 }), errCont);
                 __iced_deferrals._fulfill();
               })(__iced_k);
@@ -6606,7 +6608,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                       return calleeName = arguments[1];
                     };
                   })(),
-                  lineno: 230
+                  lineno: 232
                 }), errCont);
                 __iced_deferrals._fulfill();
               })(function() {
@@ -6626,7 +6628,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                       return callee = arguments[0];
                     };
                   })(),
-                  lineno: 234
+                  lineno: 236
                 }), errCont);
                 __iced_deferrals._fulfill();
               })(__iced_k);
@@ -6669,7 +6671,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                           return argResult = arguments[0];
                         };
                       })(),
-                      lineno: 237
+                      lineno: 239
                     }), errCont);
                     __iced_deferrals._fulfill();
                   })(function() {
@@ -6713,7 +6715,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                   return callee = arguments[0];
                 };
               })(),
-              lineno: 260
+              lineno: 262
             }), errCont);
             __iced_deferrals._fulfill();
           })(function() {
@@ -6754,7 +6756,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                           return result = arguments[0];
                         };
                       })(),
-                      lineno: 263
+                      lineno: 265
                     }), errCont);
                     __iced_deferrals._fulfill();
                   })(function() {
@@ -6782,7 +6784,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                               return result = arguments[0];
                             };
                           })(),
-                          lineno: 268
+                          lineno: 270
                         }), errCont);
                         __iced_deferrals._fulfill();
                       })(__iced_k);
@@ -6805,7 +6807,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                               return result = arguments[0];
                             };
                           })(),
-                          lineno: 273
+                          lineno: 275
                         }), errCont);
                         __iced_deferrals._fulfill();
                       })(__iced_k);
@@ -6834,7 +6836,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                   return test = arguments[0];
                 };
               })(),
-              lineno: 279
+              lineno: 281
             }), errCont);
             __iced_deferrals._fulfill();
           })(function() {
@@ -6874,7 +6876,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                         return test = arguments[0];
                       };
                     })(),
-                    lineno: 289
+                    lineno: 291
                   }), errCont);
                   __iced_deferrals._fulfill();
                 })(function() {
@@ -6886,7 +6888,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                       funcname: "evaluate"
                     });
                     root.evaluate(node.body, env, bodyCont = __iced_deferrals.defer({
-                      lineno: 292
+                      lineno: 294
                     }), makeLoopCont(node.body, env, bodyCont, cont, errCont));
                     __iced_deferrals._fulfill();
                   })(_next);
@@ -6924,7 +6926,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                     funcname: "evaluate"
                   });
                   root.evaluate(node.body, env, bodyCont = __iced_deferrals.defer({
-                    lineno: 297
+                    lineno: 299
                   }), makeLoopCont(node.body, env, bodyCont, cont, errCont));
                   __iced_deferrals._fulfill();
                 })(function() {
@@ -6940,7 +6942,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                           return test = arguments[0];
                         };
                       })(),
-                      lineno: 300
+                      lineno: 302
                     }), errCont);
                     __iced_deferrals._fulfill();
                   })(function() {
@@ -6961,7 +6963,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
               funcname: "evaluate"
             });
             root.evaluate(node.init, env, __iced_deferrals.defer({
-              lineno: 303
+              lineno: 305
             }), errCont);
             __iced_deferrals._fulfill();
           })(function() {
@@ -6997,7 +6999,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                           return test = arguments[0];
                         };
                       })(),
-                      lineno: 306
+                      lineno: 308
                     }), errCont);
                     __iced_deferrals._fulfill();
                   })(function() {
@@ -7009,7 +7011,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                         funcname: "evaluate"
                       });
                       root.evaluate(node.body, env, bodyCont = __iced_deferrals.defer({
-                        lineno: 309
+                        lineno: 311
                       }), makeLoopCont(node.body, env, bodyCont, cont, errCont));
                       __iced_deferrals._fulfill();
                     })(function() {
@@ -7020,7 +7022,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                           funcname: "evaluate"
                         });
                         root.evaluate(node.update, env, __iced_deferrals.defer({
-                          lineno: 312
+                          lineno: 314
                         }), errCont);
                         __iced_deferrals._fulfill();
                       })(_next);
@@ -7040,7 +7042,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
               funcname: "evaluate"
             });
             root.evaluate(node.left, env, __iced_deferrals.defer({
-              lineno: 314
+              lineno: 316
             }), errCont);
             __iced_deferrals._fulfill();
           })(function() {
@@ -7056,7 +7058,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                     return obj = arguments[0];
                   };
                 })(),
-                lineno: 315
+                lineno: 317
               }), errCont);
               __iced_deferrals._fulfill();
             })(function() {
@@ -7100,7 +7102,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                         funcname: "evaluate"
                       });
                       assign(id, k, env, __iced_deferrals.defer({
-                        lineno: 322
+                        lineno: 324
                       }), errCont);
                       __iced_deferrals._fulfill();
                     })(function() {
@@ -7111,7 +7113,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                           funcname: "evaluate"
                         });
                         root.evaluate(node.body, env, bodyCont = __iced_deferrals.defer({
-                          lineno: 323
+                          lineno: 325
                         }), makeLoopCont(node.body, env, bodyCont, cont, errCont));
                         __iced_deferrals._fulfill();
                       })(_next);
@@ -7133,7 +7135,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
               funcname: "evaluate"
             });
             root.evaluate(node.left, env, __iced_deferrals.defer({
-              lineno: 327
+              lineno: 329
             }), errCont);
             __iced_deferrals._fulfill();
           })(function() {
@@ -7149,7 +7151,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                     return iterable = arguments[0];
                   };
                 })(),
-                lineno: 328
+                lineno: 330
               }), errCont);
               __iced_deferrals._fulfill();
             })(function() {
@@ -7166,7 +7168,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                       return iterator = arguments[0];
                     };
                   })(),
-                  lineno: 334
+                  lineno: 336
                 }), errCont);
                 __iced_deferrals._fulfill();
               })(function() {
@@ -7202,7 +7204,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                               return v = arguments[0];
                             };
                           })(),
-                          lineno: 336
+                          lineno: 338
                         }), function(e) {
                           if (e instanceof StopIteration) {
                             return cont();
@@ -7219,7 +7221,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                             funcname: "evaluate"
                           });
                           assign(id, v, env, __iced_deferrals.defer({
-                            lineno: 338
+                            lineno: 340
                           }), errCont);
                           __iced_deferrals._fulfill();
                         })(function() {
@@ -7230,7 +7232,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                               funcname: "evaluate"
                             });
                             root.evaluate(node.body, env, bodyCont = __iced_deferrals.defer({
-                              lineno: 339
+                              lineno: 341
                             }), makeLoopCont(node.body, env, bodyCont, cont, errCont));
                             __iced_deferrals._fulfill();
                           })(_next);
@@ -7265,7 +7267,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                       return result = arguments[0];
                     };
                   })(),
-                  lineno: 349
+                  lineno: 351
                 }), errCont);
                 __iced_deferrals._fulfill();
               })(function() {
@@ -7287,7 +7289,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                   return result = arguments[0];
                 };
               })(),
-              lineno: 352
+              lineno: 354
             }), errCont);
             __iced_deferrals._fulfill();
           })(function() {
@@ -7309,7 +7311,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                     funcname: "finalizeAndThrow"
                   });
                   root.evaluate(node.finalizer, env, __iced_deferrals.defer({
-                    lineno: 358
+                    lineno: 360
                   }), errCont);
                   __iced_deferrals._fulfill();
                 })(__iced_k);
@@ -7334,7 +7336,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
               funcname: "evaluate"
             });
             root.evaluate(node.block, env, __iced_deferrals.defer({
-              lineno: 366
+              lineno: 368
             }), function(e) {
               var catchEnv, ___iced_passed_deferral1, __iced_deferrals, __iced_k,
                 _this = this;
@@ -7353,7 +7355,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                         filename: "lib/interpreter.coffee"
                       });
                       root.evaluate(node.handlers[0], env, __iced_deferrals.defer({
-                        lineno: 372
+                        lineno: 374
                       }), function(e) {
                         env.decreaseScope();
                         return finalizeAndThrow(e);
@@ -7389,7 +7391,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                   return lhs = arguments[0];
                 };
               })(),
-              lineno: 384
+              lineno: 386
             }), errCont);
             __iced_deferrals._fulfill();
           })(function() {
@@ -7410,7 +7412,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                               return rhs = arguments[0];
                             };
                           })(),
-                          lineno: 388
+                          lineno: 390
                         }), errCont);
                         __iced_deferrals._fulfill();
                       })(__iced_k);
@@ -7436,7 +7438,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                               return rhs = arguments[0];
                             };
                           })(),
-                          lineno: 391
+                          lineno: 393
                         }), errCont);
                         __iced_deferrals._fulfill();
                       })(__iced_k);
@@ -7466,7 +7468,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                   return lhs = arguments[0];
                 };
               })(),
-              lineno: 396
+              lineno: 398
             }), errCont);
             __iced_deferrals._fulfill();
           })(function() {
@@ -7482,7 +7484,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                     return rhs = arguments[0];
                   };
                 })(),
-                lineno: 397
+                lineno: 399
               }), errCont);
               __iced_deferrals._fulfill();
             })(function() {
@@ -7565,7 +7567,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                   return value = arguments[0];
                 };
               })(),
-              lineno: 440
+              lineno: 442
             }), errCont);
             __iced_deferrals._fulfill();
           })(function() {
@@ -7592,7 +7594,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                                 return property = arguments[1];
                               };
                             })(),
-                            lineno: 447
+                            lineno: 449
                           }), errCont);
                           __iced_deferrals._fulfill();
                         })(function() {
@@ -7650,7 +7652,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                   return original = arguments[0];
                 };
               })(),
-              lineno: 472
+              lineno: 474
             }), errCont);
             __iced_deferrals._fulfill();
           })(function() {
@@ -7678,7 +7680,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                             return property = arguments[1];
                           };
                         })(),
-                        lineno: 480
+                        lineno: 482
                       }), errCont);
                       __iced_deferrals._fulfill();
                     })(function() {
@@ -7712,7 +7714,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                           return property = arguments[1];
                         };
                       })(),
-                      lineno: 486
+                      lineno: 488
                     }), errCont);
                     __iced_deferrals._fulfill();
                   })(function() {
@@ -7739,7 +7741,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                           return arg = arguments[0];
                         };
                       })(),
-                      lineno: 494
+                      lineno: 496
                     }), errCont);
                     __iced_deferrals._fulfill();
                   })(function() {
@@ -7782,7 +7784,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                   return property = arguments[1];
                 };
               })(),
-              lineno: 510
+              lineno: 512
             }), errCont);
             __iced_deferrals._fulfill();
           })(function() {
@@ -7832,7 +7834,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                         return propValue = arguments[0];
                       };
                     })(),
-                    lineno: 519
+                    lineno: 521
                   }), errCont);
                   __iced_deferrals._fulfill();
                 })(function() {
@@ -7885,7 +7887,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                           return elValue = arguments[0];
                         };
                       })(),
-                      lineno: 525
+                      lineno: 527
                     }), errCont);
                     __iced_deferrals._fulfill();
                   })(_next);
@@ -7911,7 +7913,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                       return gen = arguments[0];
                     };
                   })(),
-                  lineno: 528
+                  lineno: 530
                 }), errCont);
                 __iced_deferrals._fulfill();
               })(function() {
@@ -7927,7 +7929,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                         return yieldValue = arguments[0];
                       };
                     })(),
-                    lineno: 529
+                    lineno: 531
                   }), errCont);
                   __iced_deferrals._fulfill();
                 })(function() {
@@ -7958,14 +7960,14 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                               return v = arguments[0];
                             };
                           })(),
-                          lineno: 534
+                          lineno: 536
                         }), rv.id(gen["throw"]).__iced_deferrals.defer({
                           assign_fn: (function() {
                             return function() {
                               return v = arguments[0];
                             };
                           })(),
-                          lineno: 535
+                          lineno: 537
                         }), yieldValue));
                         (function(__iced_k) {
                           __iced_deferrals = new iced.Deferrals(__iced_k, {
@@ -7979,7 +7981,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                                 return genFn = arguments[0];
                               };
                             })(),
-                            lineno: 537
+                            lineno: 539
                           }));
                           __iced_deferrals._fulfill();
                         })(function() {
@@ -7995,7 +7997,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                                   return yieldValue = arguments[0];
                                 };
                               })(),
-                              lineno: 537
+                              lineno: 539
                             }), function(e) {
                               if (e instanceof StopIteration) {
                                 return cont(e.value);
@@ -8029,7 +8031,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                           return yieldValue = arguments[0];
                         };
                       })(),
-                      lineno: 546
+                      lineno: 548
                     }), errCont);
                     __iced_deferrals._fulfill();
                   })(__iced_k);
@@ -8067,7 +8069,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
             return object = arguments[0];
           };
         })(),
-        lineno: 554
+        lineno: 556
       }), errCont);
       __iced_deferrals._fulfill();
     })(function() {
@@ -8087,7 +8089,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                 return property = arguments[0];
               };
             })(),
-            lineno: 559
+            lineno: 561
           }), errCont);
           __iced_deferrals._fulfill();
         })(function() {
@@ -8125,7 +8127,7 @@ require.define("/lib/interpreter.js",function(require,module,exports,__dirname,_
                   return property = arguments[1];
                 };
               })(),
-              lineno: 570
+              lineno: 572
             }), errCont);
             __iced_deferrals._fulfill();
           })(function() {
