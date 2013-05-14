@@ -1,5 +1,4 @@
 #! /usr/bin/env iced
-
 {evaluate,Environment} = require './lib/interpreter'
 esprima = require 'esprima'
 
