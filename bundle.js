@@ -739,7 +739,7 @@ parseYieldExpression: true
         factory((root.esprima = {}));
     }
 }(this, function (exports) {
-    'use strict';
+    //'use strict';
 
     var Token,
         TokenName,
