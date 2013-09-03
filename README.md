@@ -10,7 +10,7 @@ Setup
 -----
 
     npm install
-    npm install -g browserify@1.17.3 iced-coffee-script
+    npm install -g browserify@1.17.3 iced-coffee-script@1.4.0-c
 
 Usage
 -----

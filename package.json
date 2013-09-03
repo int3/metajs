@@ -2,7 +2,7 @@
   "name": "metajs",
   "version": "1.0.0",
   "dependencies": {
-    "iced-coffee-script": "*",
+    "iced-coffee-script": "1.4.0-c",
     "optimist": "*",
     "esprima": "git+https://github.com/ariya/esprima.git#harmony"
   }
