@@ -17,11 +17,11 @@ Usage
 
 To start the REPL:
 
-    ./interpreter.coffee
+    ./repl.coffee
 
 To execute a file:
 
-    ./interpreter.coffee [filename]
+    ./repl.coffee [filename]
 
 To run in the browser:
 
